@@ -14,6 +14,8 @@
 - Keep YAML and JSON Schema versioned; reject invalid references, missing alternatives, unknown keys and dependency cycles.
 - No installation side effects in test runs; use mocked providers for all installation tests. Treat JSON status 0 as successful planning only.
 
+- Bootstrap: use pinned official Go tar/zip archives, verify SHA-256 before extraction and install only under the user's data directory, with no elevation or permanent PATH change. Do not make Go a runtime dependency for future prebuilt release binaries.
+
 ## Quality checks
 ```bash
 go test ./...
@@ -22,6 +24,8 @@ python3 -m pip install -r tools/requirements.txt
 python3 tools/validate_catalog.py
 python3 -m unittest discover -s tests -v
 gofmt -l cmd internal
+sh -n bootstrap/setup.sh
+# Windows CI also parses and runs bootstrap/setup.ps1 with existing Go
 ```
 
 ## Next step: H2 acceptance

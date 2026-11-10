@@ -10,6 +10,10 @@ Estado: **experimental, pendiente de QA real en Windows y Linux**. El código de
 - WinGet y Flatpak son distribuidores de terceros; la aprobación del ID y del origen no equivale a una auditoría completa de binarios futuros.
 - Android no se habilita en H2. VLC y LibreOffice permanecen pendientes.
 
+## Bootstrap automático de Go
+
+Si Go no está disponible, usar `sh bootstrap/setup.sh --json` en Linux o `powershell -File bootstrap/setup.ps1 -Json` en Windows. Instalan Go 1.27.3 (si es necesario) en directorios de usuario, previa verificación SHA256 oficial. No es una instalación global y no modifican el PATH permanente. Estos scripts ejecutan `doctor` tras el bootstrap; para `apply` se sigue necesitando consentimiento explícito. Más detalles: [BOOTSTRAP_GO.md](BOOTSTRAP_GO.md).
+
 ## Primer uso
 
 En el equipo **objetivo**, clonar el repositorio y ejecutar, desde su raíz:

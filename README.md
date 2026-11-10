@@ -17,7 +17,23 @@ Sovereign aims to prepare everyday devices with declarative catalogs, profiles a
 
 ## Development
 
-Requires Go 1.23+ and Python 3.11+ for catalog validation:
+The bootstrap scripts automatically reuse Go 1.23+ or download the SHA256-pinned Go 1.27.3 archive into the **current user's** application data directory when missing. No administrator rights, system-wide installation or persistent PATH modifications are performed. Python 3.11+ is needed only for development-time catalog validation:
+
+```bash
+# Linux, from a clone of the H2 branch
+./bootstrap/setup.sh --json
+# Optional: --offline forbids toolchain downloads; dependencies must already be cached
+```
+
+```powershell
+# Windows, from a clone of the H2 branch
+.\\bootstrap\\setup.ps1 -Json
+# Optional: -Offline forbids toolchain downloads; dependencies must already be cached
+```
+
+The bootstrap currently runs **doctor** and does not itself install applications. It requires an Internet connection for first-time toolchain/dependency downloads. Sovereign release binaries will not require Go.
+
+For developers, equivalent direct commands:
 
 ```bash
 git clone https://github.com/sempitern0/Sovereign.git
@@ -35,7 +51,7 @@ go run ./cmd/suitectl verify --app localsend
 go run ./cmd/suitectl apply --app localsend --yes
 ```
 
-The read-only developer bootstraps are `./bootstrap/setup.sh --json` and `./bootstrap/setup.ps1 -Json`. A release installer with prebuilt binaries will follow in later milestones.
+Bootstrap security: Go 1.27.3 archive hashes are pinned from [the official Go release list](https://go.dev/dl/) for Windows/Linux x86-64 and ARM64. The bootstrap downloads HTTPS archives, validates SHA-256, extracts into a per-user directory and executes without a persistent PATH change. See [the bootstrap runbook](docs/BOOTSTRAP_GO.md). A prebuilt release installer will follow in later milestones.
 
 ## H2 first installation
 
