@@ -41,6 +41,7 @@ jobs:
             sh bootstrap/setup.sh --json
           else
             pwsh -NoProfile -Command '$tokens = $null; $parseErrors = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) "bootstrap/setup.ps1"), [ref]$tokens, [ref]$parseErrors); if ($parseErrors.Count -gt 0) { throw ($parseErrors -join "; ") }'
+            pwsh -NoProfile -File tests/bootstrap_path.ps1
             pwsh -NoProfile -File bootstrap/setup.ps1 -Json
           fi
       - name: H2 fail-closed test

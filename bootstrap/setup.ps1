@@ -1,9 +1,10 @@
 # Sovereign developer bootstrap: install only an official SHA256-pinned Go
-# toolchain in the current user's profile. No MSI, elevation or persistent PATH.
+# toolchain in the current user's profile. No MSI or elevation. User PATH is updated after verification.
 [CmdletBinding()]
 param(
     [switch]$Json,
-    [switch]$Offline
+    [switch]$Offline,
+    [switch]$NoPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,6 +98,16 @@ if (-not $GoExecutable) {
     $pinned = & $GoExecutable version
     if ($LASTEXITCODE -ne 0 -or $pinned -notmatch ('^go version go' + [regex]::Escape($GoVersion) + ' windows/')) {
         throw 'Cached Go toolchain does not match the pinned version.'
+    }
+}
+
+# After validating the local toolchain, expose it in this shell and future
+# shells through HKCU PATH. Users may explicitly opt out with -NoPath.
+if ($null -eq $systemGo -or $GoExecutable -ne $systemGo.Source) {
+    if (-not $NoPath) {
+        . (Join-Path $PSScriptRoot 'path.ps1')
+        Add-GoToUserPath -Executable $GoExecutable
+        Write-Host 'Go is available on PATH. Reopen other PowerShell terminals to refresh their environment.'
     }
 }
 
