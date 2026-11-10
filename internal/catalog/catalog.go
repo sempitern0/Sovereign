@@ -166,7 +166,7 @@ func validateApp(a Application, filename string) error {
 		return errors.New("invalid application identity, schema, category, upstream or required fields")
 	}
 	for _, values := range []struct {
-		ids []string
+		ids     []string
 		pattern *regexp.Regexp
 	}{{a.DependsOn, identifier}, {a.Capabilities, capabilityIdentifier}} {
 		seen := map[string]bool{}

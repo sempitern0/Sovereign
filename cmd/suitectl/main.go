@@ -82,9 +82,9 @@ func run(args []string) int {
 		}
 		if args[0] == "catalog" {
 			type entry struct {
-				ID        string `json:"id"`
-				Name      string `json:"name"`
-				Status    string `json:"status,omitempty"`
+				ID     string `json:"id"`
+				Name   string `json:"name"`
+				Status string `json:"status,omitempty"`
 			}
 			list := []entry{}
 			for _, id := range c.AppIDs() {
