@@ -90,7 +90,7 @@ func TestApplyIdempotent(t *testing.T) {
 	}
 	target, _ := Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{"org.localsend.localsend_app\n"}}
-	result, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, true)
+	result, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, false)
 	if err != nil || result.Changed || result.State != Installed || len(f.calls) != 1 {
 		t.Fatalf("unexpected result %+v err=%v", result, err)
 	}
@@ -166,7 +166,7 @@ func TestWindowsProviderSequenceAndIdempotence(t *testing.T) {
 		t.Fatalf("unexpected installation arguments: %v", f.calls[1].args)
 	}
 	already := &fakeRunner{output: []string{"LocalSend LocalSend.LocalSend 1.18.2 winget"}}
-	result, err = (Engine{Runner: already, Platform: "windows"}).Apply(context.Background(), target, true)
+	result, err = (Engine{Runner: already, Platform: "windows"}).Apply(context.Background(), target, false)
 	if err != nil || result.Changed || len(already.calls) != 1 {
 		t.Fatalf("second apply should not reinstall: %+v %v", result, err)
 	}
