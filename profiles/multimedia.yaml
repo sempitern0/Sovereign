@@ -1,0 +1,6 @@
+schema_version: 1
+id: multimedia
+name: Multimedia
+description: Perfil reservado para gestión multimedia.
+applications:
+  - vlc

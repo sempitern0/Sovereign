@@ -1,0 +1,20 @@
+schema_version: 1
+id: libreoffice
+name: LibreOffice
+category: documents
+license: MPL-2.0
+upstream: https://www.libreoffice.org/
+description: Edición local de documentos y hojas de cálculo.
+capabilities:
+  - offline_documents
+platforms:
+  windows:
+    status: pending
+    provider: winget
+  linux:
+    status: pending
+    provider: flatpak
+  android:
+    status: unsupported
+    provider: none
+    notes: No se equipara LibreOffice desktop con aplicaciones móviles.

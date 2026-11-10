@@ -1,0 +1,8 @@
+schema_version: 1
+id: essential
+name: Esencial
+description: Primer perfil local-first para escritorio.
+applications:
+  - localsend
+  - vlc
+  - libreoffice

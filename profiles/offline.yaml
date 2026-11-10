@@ -1,0 +1,5 @@
+schema_version: 1
+id: offline
+name: Offline
+description: Perfil reservado para Kiwix, mapas y bibliotecas verificadas.
+applications: []

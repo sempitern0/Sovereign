@@ -1,0 +1,19 @@
+schema_version: 1
+id: vlc
+name: VLC
+category: media
+license: GPL-2.0-or-later
+upstream: https://www.videolan.org/vlc/
+description: Reproducción de contenidos multimedia locales.
+capabilities:
+  - offline_playback
+platforms:
+  windows:
+    status: pending
+    provider: winget
+  linux:
+    status: pending
+    provider: flatpak
+  android:
+    status: pending
+    provider: fdroid

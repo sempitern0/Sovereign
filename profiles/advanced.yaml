@@ -1,0 +1,5 @@
+schema_version: 1
+id: advanced
+name: Avanzado
+description: Herramientas avanzadas pendientes de verificación.
+applications: []
