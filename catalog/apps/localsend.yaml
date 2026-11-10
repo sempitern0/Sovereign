@@ -9,14 +9,20 @@ capabilities:
   - local_transfer
 platforms:
   windows:
-    status: pending
+    status: verified
     provider: winget
-    notes: Verificar identificador y publicador antes de habilitar.
+    package_id: LocalSend.LocalSend
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/l/LocalSend/LocalSend/1.18.2/LocalSend.LocalSend.yaml
+    verified_at: "2026-11-10"
+    notes: WinGet community manifest 1.18.2; scope user, exact ID and winget source.
   linux:
-    status: pending
+    status: verified
     provider: flatpak
-    notes: Verificar ID y origen oficial.
+    package_id: org.localsend.localsend_app
+    source: https://flathub.org/apps/org.localsend.localsend_app
+    verified_at: "2026-11-10"
+    notes: User-scoped installation; existing official user flathub remote required.
   android:
     status: pending
     provider: fdroid
-    notes: Instalación guiada; comprobar firma.
+    notes: Instalación guiada futura; verificar procedencia y firma.

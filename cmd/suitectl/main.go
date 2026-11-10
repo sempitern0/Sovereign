@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -10,10 +12,11 @@ import (
 
 	"github.com/sempitern0/Sovereign/internal/catalog"
 	"github.com/sempitern0/Sovereign/internal/diagnostics"
+	"github.com/sempitern0/Sovereign/internal/install"
 	"github.com/sempitern0/Sovereign/internal/planner"
 )
 
-const version = "0.2.0-dev"
+const version = "0.3.0-dev"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
@@ -128,6 +131,7 @@ func run(args []string) int {
 		profile := fs.String("profile", "", "Required profile ID")
 		platform := fs.String("platform", runtime.GOOS, "Target platform (windows, linux, android)")
 		machine := fs.Bool("json", false, "Versioned JSON plan")
+		noInspect := fs.Bool("no-inspect", false, "Skip local package inspection and preserve deterministic H1 output")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -146,17 +150,76 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
+		if !*noInspect && *platform == runtime.GOOS {
+			engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS}
+			plan = inspectPlan(context.Background(), c, plan, engine)
+		}
 		if *machine {
 			return printJSON(plan)
 		}
-		fmt.Printf("Read-only plan: profile=%s platform=%s (no package state inspected)\n", plan.Profile, plan.Platform)
+		fmt.Printf("Read-only plan: profile=%s platform=%s\n", plan.Profile, plan.Platform)
 		for _, op := range plan.Operations {
 			fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
 		}
 		return 0
 	case "apply", "verify":
-		fmt.Fprintf(os.Stderr, "%s is not implemented. No changes were made.\n", args[0])
-		return 3
+		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
+		fs.SetOutput(os.Stderr)
+		root := fs.String("root", ".", "Repository root")
+		app := fs.String("app", "", "Single application ID (H2: localsend only)")
+		yes := fs.Bool("yes", false, "Explicitly authorize installation")
+		machine := fs.Bool("json", false, "Machine-readable verification result")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		if fs.NArg() != 0 || *app == "" {
+			return usageError(args[0] + " requires --app and no positional arguments")
+		}
+		if args[0] == "verify" && *yes {
+			return usageError("--yes applies only to apply")
+		}
+		if args[0] == "apply" && *machine {
+			return usageError("--json applies only to verify")
+		}
+		c, err := catalog.Load(*root)
+		if err != nil {
+			return loadError(err)
+		}
+		target, err := install.Resolve(c, *app, runtime.GOOS)
+		if err != nil {
+			return loadError(err)
+		}
+		engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS}
+		if args[0] == "verify" {
+			state, err := engine.Status(context.Background(), target)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Verification failed:", err)
+				return 1
+			}
+			result := install.Result{SchemaVersion: 1, Application: target.AppID, Platform: runtime.GOOS, Provider: target.Provider, State: state, Detail: "Local package-manager inspection"}
+			if *machine {
+				if rc := printJSON(result); rc != 0 {
+					return rc
+				}
+			} else {
+				fmt.Printf("%s: %s\n", target.AppID, state)
+			}
+			if state != install.Installed {
+				return 1
+			}
+			return 0
+		}
+		result, err := engine.Apply(context.Background(), target, *yes)
+		if errors.Is(err, install.ErrConsentRequired) {
+			fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
+			return 3
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Installation/verification failed:", err)
+			return 1
+		}
+		fmt.Printf("%s: %s (%s)\n", result.Application, result.State, result.Detail)
+		return 0
 	default:
 		return usageError("unknown command: " + args[0])
 	}
@@ -188,6 +251,7 @@ func usage() {
 	fmt.Println("Usage: suitectl doctor [--json] | version")
 	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json] [--root .]")
 	fmt.Println("       suitectl profiles list [--json] [--root .]")
-	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--root .]")
-	fmt.Println("Reserved for H2: verify, apply (disabled)")
+	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect] [--root .]")
+	fmt.Println("       suitectl verify --app localsend [--json] [--root .]")
+	fmt.Println("       suitectl apply --app localsend --yes [--root .] (consent required)")
 }

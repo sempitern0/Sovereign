@@ -1,7 +1,7 @@
-name: Foundation and planner CI
+name: Sovereign CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**']
   pull_request:
 permissions:
   contents: read
@@ -33,6 +33,24 @@ jobs:
         run: go build ./cmd/suitectl
       - name: Plan smoke test
         run: go run ./cmd/suitectl plan --profile essential --json
+      - name: Bootstrap syntax and smoke test
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            sh -n bootstrap/setup.sh
+            sh bootstrap/setup.sh --json
+          else
+            pwsh -NoProfile -Command '$tokens = $null; $parseErrors = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) "bootstrap/setup.ps1"), [ref]$tokens, [ref]$parseErrors); if ($parseErrors.Count -gt 0) { throw ($parseErrors -join "; ") }'
+            pwsh -NoProfile -File tests/bootstrap_path.ps1
+            pwsh -NoProfile -File bootstrap/setup.ps1 -Json
+          fi
+      - name: H2 fail-closed test
+        shell: bash
+        run: |
+          if go run ./cmd/suitectl apply --app localsend; then
+            echo 'Unconsented installation unexpectedly succeeded' >&2
+            exit 1
+          fi
   catalog:
     name: Catalog contract
     runs-on: ubuntu-latest
