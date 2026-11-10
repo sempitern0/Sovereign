@@ -1,4 +1,4 @@
-name: Foundation CI
+name: Foundation and planner CI
 on:
   push:
     branches: [main]
@@ -21,13 +21,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
       - name: Go format
         shell: bash
         run: test -z "$(gofmt -l cmd internal)"
       - name: Test
         run: go test ./...
+      - name: Vet
+        run: go vet ./...
       - name: Build
         run: go build ./cmd/suitectl
+      - name: Plan smoke test
+        run: go run ./cmd/suitectl plan --profile essential --json
   catalog:
     name: Catalog contract
     runs-on: ubuntu-latest

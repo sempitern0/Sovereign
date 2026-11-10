@@ -69,6 +69,14 @@
           "$ref": "#/$defs/platform"
         }
       }
+    },
+    "depends_on": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{1,63}$"
+      }
     }
   },
   "$defs": {

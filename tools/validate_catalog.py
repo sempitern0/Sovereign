@@ -27,6 +27,8 @@ def load(path: Path) -> dict:
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     apps: set[str] = set()
+    dependencies: dict[str, list[str]] = {}
+    alternatives: dict[str, list[dict]] = {}
     schemas = {}
     for kind in ("application", "profile"):
         schemas[kind] = json.loads((root / "schemas" / f"{kind}.schema.json").read_text(encoding="utf-8"))
@@ -57,16 +59,59 @@ def validate(root: Path) -> list[str]:
                         if status != "verified" and "package_id" in config:
                             raise ValueError(f"{platform}: unverified entries cannot advertise package_id")
                     apps.add(obj["id"])
+                    dependencies[obj["id"]] = obj.get("depends_on", [])
+                else:
+                    alternatives[obj["id"]] = obj.get("alternatives", [])
             except (ValueError, yaml.YAMLError, jsonschema.ValidationError) as exc:
                 errors.append(f"{path.relative_to(root)}: {exc}")
+    for app_id, deps in dependencies.items():
+        for dep in deps:
+            if dep not in apps:
+                errors.append(f"application {app_id}: missing dependency {dep!r}")
+            if dep == app_id:
+                errors.append(f"application {app_id}: self-dependency")
+    visited: set[str] = set()
+    visiting: set[str] = set()
+
+    def visit(app_id: str) -> None:
+        if app_id in visiting:
+            errors.append(f"dependency cycle involving {app_id}")
+            return
+        if app_id in visited:
+            return
+        visiting.add(app_id)
+        for dep in dependencies.get(app_id, []):
+            if dep in apps:
+                visit(dep)
+        visiting.remove(app_id)
+        visited.add(app_id)
+
+    for app_id in sorted(apps):
+        visit(app_id)
+
     for path in sorted((root / "profiles").glob("*.yaml")):
         try:
             profile = load(path)
             for app_id in profile.get("applications", []) + profile.get("optional", []):
                 if app_id not in apps:
                     errors.append(f"{path.relative_to(root)}: missing application {app_id!r}")
+            assigned = set(profile.get("applications", [])) | set(profile.get("optional", []))
             if set(profile.get("applications", [])) & set(profile.get("optional", [])):
                 errors.append(f"{path.relative_to(root)}: required and optional lists overlap")
+            seen_groups: set[str] = set()
+            for group in alternatives.get(profile["id"], []):
+                if group["id"] in seen_groups:
+                    errors.append(f"{path.relative_to(root)}: duplicate alternative group {group['id']}")
+                seen_groups.add(group["id"])
+                for candidate in group["candidates"]:
+                    if candidate not in apps:
+                        errors.append(f"{path.relative_to(root)}: alternative missing application {candidate}")
+                    if candidate in assigned:
+                        errors.append(f"{path.relative_to(root)}: alternative overlaps selected application {candidate}")
+                assigned.update(group["candidates"])
+                for platform, default in group.get("defaults", {}).items():
+                    if default not in group["candidates"]:
+                        errors.append(f"{path.relative_to(root)}: {platform} alternative default is not a candidate")
         except (ValueError, yaml.YAMLError) as exc:
             errors.append(f"{path.relative_to(root)}: {exc}")
     return errors
