@@ -14,7 +14,7 @@
 - Keep YAML and JSON Schema versioned; reject invalid references, missing alternatives, unknown keys and dependency cycles.
 - No installation side effects in test runs; use mocked providers for all installation tests. Treat JSON status 0 as successful planning only.
 
-- Bootstrap: use pinned official Go tar/zip archives, verify SHA-256 before extraction and install only under the user's data directory, with no elevation or permanent PATH change. Do not make Go a runtime dependency for future prebuilt release binaries.
+- Bootstrap: use pinned official Go tar/zip archives, verify SHA-256 before extraction and install only under the user's data directory, with no elevation. Windows may add only the reviewed toolchain `bin` to HKCU user PATH idempotently (opt-out `-NoPath`); never modify machine PATH. Linux does not persist PATH. Do not make Go a runtime dependency for future prebuilt release binaries.
 
 ## Quality checks
 ```bash

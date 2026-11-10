@@ -17,7 +17,7 @@ Sovereign aims to prepare everyday devices with declarative catalogs, profiles a
 
 ## Development
 
-The bootstrap scripts automatically reuse Go 1.23+ or download the SHA256-pinned Go 1.27.3 archive into the **current user's** application data directory when missing. No administrator rights, system-wide installation or persistent PATH modifications are performed. Python 3.11+ is needed only for development-time catalog validation:
+The bootstrap scripts automatically reuse Go 1.23+ or download the SHA256-pinned Go 1.27.3 archive into the **current user's** application data directory when missing. No administrator rights or system-wide installation are required. On Windows, the verified per-user toolchain is added to the **user PATH** by default (disable with `-NoPath`). Reopen already-running terminals to refresh their PATH; a child script cannot change its parent's environment. Python 3.11+ is needed only for development-time catalog validation:
 
 ```bash
 # Linux, from a clone of the H2 branch
@@ -51,7 +51,7 @@ go run ./cmd/suitectl verify --app localsend
 go run ./cmd/suitectl apply --app localsend --yes
 ```
 
-Bootstrap security: Go 1.27.3 archive hashes are pinned from [the official Go release list](https://go.dev/dl/) for Windows/Linux x86-64 and ARM64. The bootstrap downloads HTTPS archives, validates SHA-256, extracts into a per-user directory and executes without a persistent PATH change. See [the bootstrap runbook](docs/BOOTSTRAP_GO.md). A prebuilt release installer will follow in later milestones.
+Bootstrap security: Go 1.27.3 archive hashes are pinned from [the official Go release list](https://go.dev/dl/) for Windows/Linux x86-64 and ARM64. The bootstrap downloads HTTPS archives, validates SHA-256, extracts into a per-user directory and executes without privilege elevation. Windows updates only the user PATH, never the machine PATH; Linux does not change PATH. See [the bootstrap runbook](docs/BOOTSTRAP_GO.md). A prebuilt release installer will follow in later milestones.
 
 ## H2 first installation
 
