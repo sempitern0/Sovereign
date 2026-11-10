@@ -7,12 +7,12 @@
 4. Record actual tests and limitations. Do not invent IDs, versions, API availability or success claims.
 
 ## Security invariants
-- `doctor`, `catalog list`, `profiles list`, and `plan` are read-only. `apply` and `verify` MUST stay disabled until H2 has verified provenance and consent.
+- `doctor`, `catalog list`, `profiles list`, and `plan` are read-only. Only `verify --app localsend` and explicit `apply --app localsend --yes` are allowed in H2; all other installs fail closed.
 - Never install `pending` or `unsupported` packages. Never treat `inspection_required` as proof of an installed package.
 - Multisuite is an optional, future connector. Local use cannot depend on a network, account or NAS.
 - Never store secrets or user files in Git/logs. Never use remote script execution pipelines, silent elevation, unsolicited telemetry or destructive operations.
 - Keep YAML and JSON Schema versioned; reject invalid references, missing alternatives, unknown keys and dependency cycles.
-- No installation side effects in test runs. Treat JSON status 0 as successful planning only.
+- No installation side effects in test runs; use mocked providers for all installation tests. Treat JSON status 0 as successful planning only.
 
 ## Quality checks
 ```bash
@@ -24,5 +24,5 @@ python3 -m unittest discover -s tests -v
 gofmt -l cmd internal
 ```
 
-## Next milestone: H2
-Verify an official package ID and publisher for a single Windows/Linux app. Implement query/plan/apply/verify using a mockable provider and explicit user consent. Test retries, failures and idempotency. Keep Android guided and Multisuite opt-in.
+## Next step: H2 acceptance
+Review exact LocalSend source and package identities in `docs/H2_LOCALSEND.md`. Test WinGet and Flatpak on disposable real environments, including first install, `verify`, second `apply`, missing source, cancelled prompts, network loss and recovery. Keep Android guided and Multisuite opt-in. Do not enable additional apps before this acceptance.

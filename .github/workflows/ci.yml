@@ -1,4 +1,4 @@
-name: Foundation and planner CI
+name: Sovereign CI
 on:
   push:
     branches: [main]
@@ -33,6 +33,13 @@ jobs:
         run: go build ./cmd/suitectl
       - name: Plan smoke test
         run: go run ./cmd/suitectl plan --profile essential --json
+      - name: H2 fail-closed test
+        shell: bash
+        run: |
+          if go run ./cmd/suitectl apply --app localsend; then
+            echo 'Unconsented installation unexpectedly succeeded' >&2
+            exit 1
+          fi
   catalog:
     name: Catalog contract
     runs-on: ubuntu-latest

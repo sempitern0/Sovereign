@@ -5,10 +5,15 @@ import (
 	"testing"
 )
 
-func TestDisabledCommands(t *testing.T) {
-	for _, command := range []string{"apply", "verify"} {
-		if got := run([]string{command}); got != 3 {
-			t.Fatalf("%s: got %d, want 3", command, got)
+func TestH2RejectsUnsupportedAndUnconsentedOperations(t *testing.T) {
+	root := filepath.Join("..", "..")
+	for _, args := range [][]string{
+		{"apply", "--app", "localsend", "--root", root},
+		{"apply", "--app", "vlc", "--yes", "--root", root},
+		{"verify", "--app", "vlc", "--root", root},
+	} {
+		if got := run(args); got == 0 {
+			t.Fatalf("%v unexpectedly succeeded", args)
 		}
 	}
 }
