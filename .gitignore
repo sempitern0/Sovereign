@@ -1,46 +1,22 @@
-*~
-
-# temporary files which can be created if a process still has a handle open of a deleted file
-.fuse_hidden*
-
-# KDE directory preferences
-.directory
-
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
-
-# .nfs files are created when an open file is removed but is still being accessed
-.nfs*
-
-### PowerShell ###
-# Exclude packaged modules
-*.zip
-
-# Exclude .NET assemblies from source
-*.dll
-
-### Windows ###
-# Windows thumbnail cache files
+# Sovereign: generated binaries and local state
+/suitectl
+/suitectl.exe
+*.test
+*.out
+coverage/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+.env
+.env.*
+!.env.example
+.local/
+state/
+BibliotecaPersonal/
+*.kdbx
+*.key
+*.pem
+*.p12
+.DS_Store
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-
-# Dump file
-*.stackdump
-
-# Folder config file
-[Dd]esktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows Installer files
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-
-# Windows shortcuts
-*.lnk

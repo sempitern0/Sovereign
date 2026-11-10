@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "category",
+    "license",
+    "upstream",
+    "platforms"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 2
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "transfer",
+        "media",
+        "documents",
+        "reading",
+        "security",
+        "offline",
+        "utilities"
+      ]
+    },
+    "license": {
+      "type": "string",
+      "minLength": 2
+    },
+    "upstream": {
+      "type": "string",
+      "pattern": "^https://[^ ]+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "windows": {
+          "$ref": "#/$defs/platform"
+        },
+        "linux": {
+          "$ref": "#/$defs/platform"
+        },
+        "android": {
+          "$ref": "#/$defs/platform"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "provider"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "verified",
+            "unsupported"
+          ]
+        },
+        "provider": {
+          "enum": [
+            "winget",
+            "flatpak",
+            "apt",
+            "dnf",
+            "fdroid",
+            "obtainium",
+            "manual",
+            "none"
+          ]
+        },
+        "package_id": {
+          "type": "string",
+          "minLength": 2
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^https://[^ ]+$"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

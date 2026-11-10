@@ -1,0 +1,22 @@
+schema_version: 1
+id: localsend
+name: LocalSend
+category: transfer
+license: MIT
+upstream: https://localsend.org/
+description: Transferencia local de archivos entre dispositivos en LAN.
+capabilities:
+  - local_transfer
+platforms:
+  windows:
+    status: pending
+    provider: winget
+    notes: Verificar identificador y publicador antes de habilitar.
+  linux:
+    status: pending
+    provider: flatpak
+    notes: Verificar ID y origen oficial.
+  android:
+    status: pending
+    provider: fdroid
+    notes: Instalación guiada; comprobar firma.
