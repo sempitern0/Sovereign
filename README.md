@@ -55,16 +55,20 @@ Bootstrap security: Go 1.27.3 archive hashes are pinned from [the official Go re
 
 ## H2 first installation
 
-Only **LocalSend** is allowlisted. `apply` requires `--app localsend --yes`; without `--yes` no package-manager process is executed. `verify` is read-only and returns nonzero if not installed or if inspection is ambiguous. A second successful `apply` leaves the existing installation unchanged. On Linux, configure the official **Flathub user remote** yourself first (no repository additions or privileged operations by Sovereign). On Windows, WinGet uses the **winget** source, the exact identifier, user scope and the no-upgrade option; WinGet's agreement prompts remain under your control. Neither mode uses a shell or downloads a remote script.
+Only **LocalSend** is allowlisted. `apply --app localsend` first checks installed state: if already installed, returns success without consent or changes. If missing, explicit `--yes` is required before installation. An ambiguous inspection always fails closed. `verify` is read-only and returns nonzero if not installed or if inspection is ambiguous. A second successful `apply` leaves the existing installation unchanged. On Linux, configure the official **Flathub user remote** yourself first (no repository additions or privileged operations by Sovereign). On Windows, WinGet uses the **winget** source, the exact identifier, user scope and the no-upgrade option; WinGet's agreement prompts remain under your control. Neither mode uses a shell or downloads a remote script.
 
 Sources and operating checklist: [H2 LocalSend runbook](docs/H2_LOCALSEND.md). The current smoke tests simulate the package managers; run actual installations only on a disposable or test device before approving H2 for general use.
+
+The default `plan` on the current operating system overlays **read-only** local state for allowlisted applications: `installed`, `not_installed`, or `inspection_failed`. Cross-platform plans and `--no-inspect` retain the deterministic H1-only result. The plan never invokes installation.
 
 ## H1 plan states
 
 - `pending_verification`: package identity/source has not been verified; cannot install.
 - `unsupported`: no supported platform implementation.
 - `provider_unavailable`: verified definition but local package manager missing; cannot install.
-- `inspection_required`: verified definition with locally detected provider; does **not** mean installed or ready to install.
+- `inspection_required`: verified definition with locally detected provider; no inspection performed (cross-platform, `--no-inspect`, or unsupported H2 adapter).
+- `installed` / `not_installed`: current device checked through the local package manager (read-only).
+- `inspection_failed`: ambiguous provider output or inspection error; no installation is authorized.
 - `optional`: visible but deliberately not auto-selected.
 
 A plan carries no private metadata and can be generated entirely offline. Cross-platform estimates cannot detect package managers on a different device.

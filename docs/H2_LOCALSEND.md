@@ -27,7 +27,7 @@ go run ./cmd/suitectl verify --app localsend
 go run ./cmd/suitectl apply --app localsend --yes
 ```
 
-**Importante:** `apply --app localsend` sin `--yes` no invoca gestores ni instala nada. `--yes` es una autorización explícita para **este** paquete, no para todo el perfil. El gestor puede pedir acuerdos adicionales. No se aceptan automáticamente acuerdos de WinGet, ni se eleva el proceso de forma silenciosa.
+**Importante:** `apply --app localsend` sin `--yes` comprueba el estado mediante el gestor (solo lectura); si ya está instalada, devuelve éxito, y si falta rechaza la instalación. No instala nada. `--yes` es una autorización explícita para **este** paquete, no para todo el perfil. El gestor puede pedir acuerdos adicionales. No se aceptan automáticamente acuerdos de WinGet, ni se eleva el proceso de forma silenciosa.
 
 ### Windows
 
@@ -57,3 +57,7 @@ go run ./cmd/suitectl apply --app localsend --yes
 8. Windows y Linux: confirmar que el proceso no lee Multisuite ni guarda credenciales.
 
 Los tests de CI cubren el contrato con un proveedor falso; no sustituye esta prueba en máquinas reales. H2 **no** autoriza desplegar masivamente la suite.
+
+## Plan enriquecido y consentimiento condicional
+
+En el equipo local, `suitectl plan --profile essential --json` consulta de forma **solo lectura** el estado de las aplicaciones admitidas por H2, actualmente LocalSend. Muestra `installed`, `not_installed` o `inspection_failed`. El resto del catálogo conserva los estados originales de H1. Si se desea un plan determinista sin consultar gestores, usar `--no-inspect`; los planes para otras plataformas nunca inspeccionan el equipo local. `apply` verifica primero el estado aunque no se pase `--yes`, y exige autorización únicamente cuando falta instalar; un error de inspección impide cualquier cambio.

@@ -24,6 +24,10 @@ const (
 	Missing   State = "missing"
 )
 
+// ErrConsentRequired is returned only if an installation would change the host.
+// Checking an already-installed application does not require installation consent.
+var ErrConsentRequired = errors.New("installation requires explicit consent (--yes)")
+
 type Result struct {
 	SchemaVersion int    `json:"schema_version"`
 	Application   string `json:"application"`
@@ -147,7 +151,7 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 	}
 	if !consent {
 		result.State, result.Detail = Missing, "Consent required; no changes"
-		return result, errors.New("installation requires explicit consent (--yes)")
+		return result, ErrConsentRequired
 	}
 	if e.Platform == "linux" {
 		remote, err := e.Runner.Run(ctx, "flatpak", "remotes", "--user", "--columns=name,url")

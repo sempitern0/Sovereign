@@ -8,7 +8,7 @@ import (
 func TestH2RejectsUnsupportedAndUnconsentedOperations(t *testing.T) {
 	root := filepath.Join("..", "..")
 	for _, args := range [][]string{
-		{"apply", "--app", "localsend", "--root", root},
+		
 		{"apply", "--app", "vlc", "--yes", "--root", root},
 		{"verify", "--app", "vlc", "--root", root},
 	} {
@@ -40,6 +40,7 @@ func TestReadOnlyCLI(t *testing.T) {
 		{"profiles", "list", "--root", root, "--json"},
 		{"plan", "--profile", "essential", "--platform", "linux", "--root", root, "--json"},
 		{"plan", "--profile", "essential", "--platform", "android", "--root", root},
+		{"plan", "--profile", "essential", "--platform", "linux", "--no-inspect", "--root", root, "--json"},
 	} {
 		if got := run(args); got != 0 {
 			t.Fatalf("%v returned %d", args, got)

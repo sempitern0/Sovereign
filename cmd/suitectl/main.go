@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -130,6 +131,7 @@ func run(args []string) int {
 		profile := fs.String("profile", "", "Required profile ID")
 		platform := fs.String("platform", runtime.GOOS, "Target platform (windows, linux, android)")
 		machine := fs.Bool("json", false, "Versioned JSON plan")
+		noInspect := fs.Bool("no-inspect", false, "Skip local package inspection and preserve deterministic H1 output")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -148,10 +150,14 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
+		if !*noInspect && *platform == runtime.GOOS {
+			engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS}
+			plan = inspectPlan(context.Background(), c, plan, engine)
+		}
 		if *machine {
 			return printJSON(plan)
 		}
-		fmt.Printf("Read-only plan: profile=%s platform=%s (no package state inspected)\n", plan.Profile, plan.Platform)
+		fmt.Printf("Read-only plan: profile=%s platform=%s\n", plan.Profile, plan.Platform)
 		for _, op := range plan.Operations {
 			fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
 		}
@@ -203,12 +209,11 @@ func run(args []string) int {
 			}
 			return 0
 		}
-		if !*yes {
+		result, err := engine.Apply(context.Background(), target, *yes)
+		if errors.Is(err, install.ErrConsentRequired) {
 			fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
 			return 3
 		}
-		fmt.Fprintf(os.Stderr, "Authorized installation: %s via %s (%s); package manager may request additional confirmation.\n", target.AppID, target.Provider, target.PackageID)
-		result, err := engine.Apply(context.Background(), target, true)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Installation/verification failed:", err)
 			return 1
@@ -246,7 +251,7 @@ func usage() {
 	fmt.Println("Usage: suitectl doctor [--json] | version")
 	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json] [--root .]")
 	fmt.Println("       suitectl profiles list [--json] [--root .]")
-	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--root .]")
+	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect] [--root .]")
 	fmt.Println("       suitectl verify --app localsend [--json] [--root .]")
 	fmt.Println("       suitectl apply --app localsend --yes [--root .] (consent required)")
 }
