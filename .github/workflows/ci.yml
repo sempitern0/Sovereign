@@ -24,7 +24,9 @@ jobs:
           cache: true
       - name: Go format
         shell: bash
-        run: test -z "$(gofmt -l cmd internal)"
+        run: |
+          gofmt -w cmd internal
+          git diff --exit-code -- cmd internal
       - name: Test
         run: go test ./...
       - name: Vet
