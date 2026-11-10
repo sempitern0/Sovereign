@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"errors"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -139,5 +140,54 @@ func TestCrossPlatformExecutionForbidden(t *testing.T) {
 	e := Engine{Runner: f, Platform: "android"}
 	if _, err := e.Status(context.Background(), Target{AppID: "localsend"}); err == nil || len(f.calls) != 0 {
 		t.Fatal("cross platform accepted")
+	}
+}
+
+func TestWindowsProviderSequenceAndIdempotence(t *testing.T) {
+	target, err := Resolve(reviewedCatalog(), "localsend", "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &fakeRunner{output: []string{
+		"No installed package found matching input criteria.",
+		"",
+		"Name ID Version Source\nLocalSend LocalSend.LocalSend 1.18.2 winget\n",
+	}}
+	engine := Engine{Runner: f, Platform: "windows"}
+	result, err := engine.Apply(context.Background(), target, true)
+	if err != nil || result.State != Installed || !result.Changed {
+		t.Fatalf("result %+v error %v", result, err)
+	}
+	if len(f.calls) != 3 || f.calls[0].program != "winget" || f.calls[1].program != "winget" || f.calls[1].args[0] != "install" {
+		t.Fatalf("unexpected calls: %+v", f.calls)
+	}
+	expected := []string{"install", "--id", localSendWin, "--exact", "--source", "winget", "--no-upgrade", "--scope", "user"}
+	if !reflect.DeepEqual(f.calls[1].args, expected) {
+		t.Fatalf("unexpected installation arguments: %v", f.calls[1].args)
+	}
+	already := &fakeRunner{output: []string{"LocalSend LocalSend.LocalSend 1.18.2 winget"}}
+	result, err = (Engine{Runner: already, Platform: "windows"}).Apply(context.Background(), target, true)
+	if err != nil || result.Changed || len(already.calls) != 1 {
+		t.Fatalf("second apply should not reinstall: %+v %v", result, err)
+	}
+}
+
+func TestWindowsAmbiguousStateFailsClosed(t *testing.T) {
+	target, _ := Resolve(reviewedCatalog(), "localsend", "windows")
+	f := &fakeRunner{output: []string{"unexpected package-manager output"}}
+	state, err := (Engine{Runner: f, Platform: "windows"}).Status(context.Background(), target)
+	if err == nil || state != "" {
+		t.Fatalf("ambiguous state accepted: %s, %v", state, err)
+	}
+}
+
+func TestNativeRunnerRejectsCrossPlatform(t *testing.T) {
+	other := "windows"
+	if runtime.GOOS == "windows" {
+		other = "linux"
+	}
+	_, err := (Engine{Runner: ExecRunner{}, Platform: other}).Status(context.Background(), Target{AppID: "localsend"})
+	if err == nil {
+		t.Fatal("native provider invoked for a different operating system")
 	}
 }
