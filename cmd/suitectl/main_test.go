@@ -8,7 +8,7 @@ import (
 func TestH2RejectsUnsupportedAndUnconsentedOperations(t *testing.T) {
 	root := filepath.Join("..", "..")
 	for _, args := range [][]string{
-		
+
 		{"apply", "--app", "vlc", "--yes", "--root", root},
 		{"verify", "--app", "vlc", "--root", root},
 	} {
