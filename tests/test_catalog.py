@@ -39,19 +39,19 @@ class CatalogTests(unittest.TestCase):
 
     def test_missing_dependency_rejected(self):
         with (self.root / "catalog/apps/vlc.yaml").open("a") as out:
-            out.write("depends_on: [missing-app]\\n")
+            out.write("depends_on: [missing-app]\n")
         self.assertTrue(any("missing dependency" in e for e in validate(self.root)))
 
     def test_dependency_cycle_rejected(self):
         with (self.root / "catalog/apps/vlc.yaml").open("a") as out:
-            out.write("depends_on: [localsend]\\n")
+            out.write("depends_on: [localsend]\n")
         with (self.root / "catalog/apps/localsend.yaml").open("a") as out:
-            out.write("depends_on: [vlc]\\n")
+            out.write("depends_on: [vlc]\n")
         self.assertTrue(any("dependency cycle" in e for e in validate(self.root)))
 
     def test_alternative_bad_default_rejected(self):
         with (self.root / "profiles/essential.yaml").open("a") as out:
-            out.write("alternatives:\\n  - id: reader\\n    candidates: [localsend, vlc]\\n    defaults:\\n      linux: libreoffice\\n")
+            out.write("alternatives:\n  - id: reader\n    candidates: [localsend, vlc]\n    defaults:\n      linux: libreoffice\n")
         self.assertTrue(any("alternative" in e for e in validate(self.root)))
 
     def test_verified_requires_evidence(self):

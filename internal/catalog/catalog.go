@@ -22,31 +22,7 @@ const SchemaVersion = 1
 const maxManifestSize = 128 << 10
 
 var identifier = regexp.MustCompile(`^[a-z][a-z0-9-]{1,63}$`)
-var capabilityIdentifier = regexp.MustCompile(`^[a-z][a-z0-9_]*// Package catalog loads and validates the declarative inputs used by the planner.
-// It never contacts the network or executes package managers.
-package catalog
-
-import (
-	"errors"
-	"fmt"
-	"io"
-	"net/url"
-	"os"
-	"path/filepath"
-	"regexp"
-	"slices"
-	"sort"
-	"strings"
-	"time"
-
-	"gopkg.in/yaml.v3"
-)
-
-const SchemaVersion = 1
-const maxManifestSize = 128 << 10
-
-var identifier = regexp.MustCompile(`^[a-z][a-z0-9-]{1,63}$`)
-)
+var capabilityIdentifier = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 var packageIdentifier = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._+-]{1,127}$`)
 
 type Platform struct {
