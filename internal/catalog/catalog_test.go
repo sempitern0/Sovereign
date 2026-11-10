@@ -83,7 +83,7 @@ func TestRejectMissingAlternative(t *testing.T) {
 	root := fixture(t)
 	p := filepath.Join(root, "profiles/essential.yaml")
 	data, _ := os.ReadFile(p)
-	if err := os.WriteFile(p, append(data, []byte("alternatives:\n  - id: reading\n    candidates: [alpha, missing]\n    defaults:\n      linux: missing\n")...), 0600); err != nil {
+	if err := os.WriteFile(p, append(data, []byte("alternatives:\n  - id: reading\n    candidates: [beta, missing]\n    defaults:\n      linux: missing\n")...), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), "missing application") {
