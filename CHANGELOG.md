@@ -2,6 +2,7 @@
 
 ## Unreleased — H3
 
+- H3-4: read-only `status [--profile] [--json]` comparing desired, observed and recorded state with drift notes and next steps (`schema_version` 1). `state.Store.Peek` reads the journal without any filesystem change; `Load` now builds on it.
 - H3-3: `apply --profile` with a single consent over the printed plan, topological order, continuation after failures, `blocked` dependents and a per-app summary (exit 1 if incomplete). New `internal/state`: atomic per-user journal with error classes only (no provider output or paths), corrupt-journal preservation and an apply lock with dead-process detection; `apply --app` uses both (ADR-0007).
 - H3-2: verify and allowlist LibreOffice (WinGet `TheDocumentFoundation.LibreOffice`, machine scope, declared Microsoft Visual C++ Redistributable dependency; Flathub `org.libreoffice.LibreOffice`, upstream-maintained). New optional `provider_dependencies`, matched between catalog and allowlist and shown before consent, narrowed to the device architecture. Tests needing an unapproved app now use a fictional pending one.
 - H3-1: verify and allowlist VLC (WinGet `VideoLAN.VLC` in machine scope; Flathub `org.videolan.VLC`, community build). Add required `scope` and `provenance` to verified catalog and allowlist entries; machine scope only from an attended terminal; plan and consent refusal show administrator and community notices (ADR-0006).

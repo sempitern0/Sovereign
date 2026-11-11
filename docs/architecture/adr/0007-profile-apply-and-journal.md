@@ -21,9 +21,10 @@ H3 requires installing the essential profile with one consent, visible partial f
    - The journal is informational. Package managers stay the source of truth and every run re-inspects them; a journal write failure is a warning and never changes the exit code.
    - Both `apply --app` and `apply --profile` record results; a refused consent records nothing.
 3. **Apply lock**: `apply.lock` in the same directory, created exclusively and holding the PID. Any consented `apply` takes it. A second run fails with the lock path. A lock whose process no longer exists (signal 0 on Unix, `OpenProcess` on Windows) is replaced automatically.
+4. **`status`** (H3-4) is read-only: it inspects package managers like `plan` and reads the journal with `Peek`, which never creates directories, moves a corrupt journal aside or takes the lock. Per application it reports the observed state (`installed`, `missing`, `unknown`, `provider_missing`, `not_installable`, `not_checked`), the last recorded result and a note when they disagree (for example recorded as installed but no longer present). `--json` emits `schema_version: 1`. Exit code 0 means the status was computed; `complete` says whether every installable required app is present.
 
 ## Consequences
 
-- H3-4 (`status`) can compare the journal with live inspection without new storage.
+- `status` compares the journal with live inspection without new storage.
 - The journal does not drive decisions; deleting it is always safe.
 - No new dependencies: locking and process checks use the Go standard library and `syscall`.

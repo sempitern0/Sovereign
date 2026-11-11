@@ -13,7 +13,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 | H0 — Fundación | Completado | Esquema v1, validador Python y CI Windows/Linux |
 | H1 — Planificación | Completado | `plan` determinista y JSON v1; tests de alternativas, dependencias e incompatibilidades |
 | H2 — Primera instalación (LocalSend) | Completado | PR #2 y PR #3 fusionadas. CI de PR #3 en verde en ubuntu-latest y windows-latest (Go, catálogo). **El usuario confirma pruebas reales (2026-11-11)**; no se han adjuntado registros |
-| H3 — Perfil esencial instalable | En curso | H3-1 (VLC) y H3-2 (LibreOffice) fusionadas; en Windows real solo se ha validado la **detección** (ya estaban instaladas), no la instalación. H3-3 (`apply --profile`, journal, bloqueo) en revisión. H3-4 pendiente |
+| H3 — Perfil esencial instalable | En curso | H3-1 (VLC) y H3-2 (LibreOffice) fusionadas; en Windows real solo se ha validado la **detección** (ya estaban instaladas), no la instalación. H3-3 (`apply --profile`, journal, bloqueo) fusionada (PR #6). H3-4 (`status`) en revisión. **Con H3-4, H3 queda completo en código; falta la aceptación real del perfil** |
 | H4 — Primera release distribuible | Pendiente | — |
 | H5 — Datos y portabilidad | Pendiente | — |
 | H6 — Android guiado | Pendiente | — |
@@ -24,7 +24,8 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 ## Qué funciona hoy
 
 - `suitectl doctor | catalog list | profiles list | plan` (solo lectura) y `verify` / `apply --app <id> --yes` para `localsend`, `vlc` y `libreoffice`.
-- Rama H3-3: `apply --profile essential --yes` instala con un solo consentimiento todo lo que falta del perfil, sigue tras un fallo, bloquea dependientes y resume por app; journal local sin datos personales y bloqueo contra dos `apply` simultáneos (ADR-0007).
+- `status` (rama H3-4): estado deseado frente a observado y registrado, con avisos de deriva; solo lectura, texto y JSON.
+- `apply --profile essential --yes` instala con un solo consentimiento todo lo que falta del perfil, sigue tras un fallo, bloquea dependientes y resume por app; journal local sin datos personales y bloqueo contra dos `apply` simultáneos (ADR-0007).
 - Funciona desde cualquier carpeta: catálogo, perfiles y allowlist van incrustados. `--root <checkout>` lee una copia de desarrollo; la allowlist nunca se lee de disco.
 - Instalable en `main`:
   - **LocalSend** — validado en dispositivo real (H2).
@@ -36,7 +37,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Siguiente acción
 
-1. **Revisar y fusionar H3-3** (rama `feat/h3-3-apply-profile`).
+1. **Revisar y fusionar H3-4** (rama `feat/h3-4-status`).
 2. **Completar las pruebas reales** en un equipo donde VLC y LibreOffice **no** estén instalados (por ejemplo, una VM de Windows recién creada y una distribución Linux con Flatpak), usando ya el perfil: `suitectl apply --profile essential` (sin `--yes`, debe listar lo que falta y no cambiar nada) y después con `--yes`. Preparación del equipo:
 
    ```bash
@@ -47,7 +48,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
    GOTOOLCHAIN=local "$GO" build -o suitectl ./cmd/suitectl
    ./suitectl apply --profile essential       # sin --yes: lista lo que falta, no cambia nada (código 3)
    ./suitectl apply --profile essential --yes # instala lo que falte; repetirlo debe dar "already installed"
-   ./suitectl verify --app vlc
+   ./suitectl status                          # todo "installed"; "Profile complete"
    ```
 
    ```powershell
@@ -57,6 +58,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
    go build -o suitectl.exe .\cmd\suitectl
    .\suitectl.exe apply --profile essential        # sin --yes: avisos y lista de lo que falta
    .\suitectl.exe apply --profile essential --yes  # Windows mostrará UAC para VLC y LibreOffice
+   .\suitectl.exe status                           # desinstalar una app a mano y repetir: debe avisar de la deriva
    ```
 
    Escenarios: los de [H2_LOCALSEND.md](H2_LOCALSEND.md#escenarios-de-aceptación-en-dispositivo-real) y además:
@@ -65,7 +67,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
    - **Perfil:** cancelar el UAC de una app la marca `failed` y el resto continúa; el resumen termina con código 1 y repetir el comando completa lo que faltaba; dos `apply` a la vez → el segundo se niega; el journal (`%LOCALAPPDATA%\Sovereign\state\journal.json` o `~/.local/state/sovereign/journal.json`) refleja cada resultado sin rutas ni nombres de usuario.
 
    Registrar el resultado aquí. Si algo falla: abrir un PR de corrección o retirar la entrada de `catalog/install-allowlist.yaml` (la app vuelve a quedar no instalable).
-3. **H3-4:** `status`: estado observado frente al deseado a partir del journal y de los gestores, sin efectos (texto y JSON). Con H3-4 y las pruebas reales, H3 queda completo y se pasa a H4 (release distribuible). Ver [plan §10](../PLAN_TECNICO_SUITE_LIBRE.md#10-hoja-de-ruta-y-entregables).
+3. **Cerrar H3** con esa evidencia real registrada aquí y empezar **H4 — primera release distribuible**: binarios Windows/Linux (x86-64 y ARM64) generados en CI con checksums, SBOM y procedencia; bootstrap que descarga y verifica la release en vez de Go; dependencias vendorizadas. Ver [plan §10](../PLAN_TECNICO_SUITE_LIBRE.md#10-hoja-de-ruta-y-entregables) y la fila «Release / bootstrap (H4)» de `AGENTS.md`.
 
 ## Limitaciones conocidas
 
@@ -86,6 +88,8 @@ No ejecutado / limitaciones: …
 Siguiente acción: …
 ```
 
+- **2026-11-11 · feat/h3-4-status · H3-4.** `status [--profile] [--json]` de solo lectura: por app, estado observado, último resultado registrado y nota de deriva (registrado como instalado pero ya no presente, último intento fallido, instalado fuera de Sovereign) con siguiente paso; `complete` en JSON (`schema_version` 1); entradas del journal fuera del perfil en `other_recorded`. `state.Store.Peek` lee sin tocar el disco; `Load` se apoya en él. Tests con proveedores simulados, incluido que `status` no modifica el directorio de estado ni ejecuta comandos de instalación (mutación `Peek`→`Load` detectada). Go test/vet en verde. No ejecutado: proveedores reales.
+- **2026-11-11 · main · H3-3 fusionada (PR #6).**
 - **2026-11-11 · feat/h3-3-apply-profile · H3-3.** `apply --profile` con un consentimiento, orden topológico, continuación tras fallos, `blocked` para dependientes y resumen con código 1 si el perfil queda incompleto. Nuevo `internal/state`: journal atómico (0600, sin salida de proveedores: solo clases de error), journal corrupto apartado y bloqueo con detección de proceso muerto (ADR-0007). `apply --app` también usa bloqueo y journal. Tests con proveedores simulados, incluido que el journal no filtra rutas; mutaciones comprobadas (sin bloqueo por dependencia o sin lock, los tests fallan). Go test/vet (Linux; vet Windows) en verde. La primera CI falló porque la regla `state/` de `.gitignore` ocultaba `internal/state/`; corregida (`/state/`) y verificado un checkout limpio. No ejecutado: proveedores reales.
 - **2026-11-11 · prueba real del mantenedor · Windows amd64.** `bootstrap\setup.ps1` correcto (doctor: winget disponible). `go build` correcto. `apply --app vlc --yes` y `apply --app libreoffice --yes` → `installed (Already installed; no changes)`: **valida en real la detección de paquetes de ámbito máquina y la idempotencia**. No valida instalación, UAC, cancelación ni la dependencia VC++ (las apps ya estaban instaladas). Linux sin probar.
 - **2026-11-11 · main · H3-1 + H3-2 fusionadas.** PR #4 y PR #5 fusionadas (squash) a petición del mantenedor, con CI en verde en Linux y Windows y **sin aceptación real todavía** (excepción explícita al flujo de `AGENTS.md`). Siguiente: primeras instalaciones reales de VLC y LibreOffice, después H3-3.

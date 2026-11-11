@@ -139,6 +139,31 @@ func run(args []string) int {
 			}
 		}
 		return 0
+	case "status":
+		fs := flag.NewFlagSet("status", flag.ContinueOnError)
+		fs.SetOutput(os.Stderr)
+		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
+		profile := fs.String("profile", "essential", "Profile to compare against this device")
+		machine := fs.Bool("json", false, "Machine-readable status (schema_version 1)")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		if fs.NArg() != 0 {
+			return usageError("status takes no positional arguments")
+		}
+		c, err := loadCatalog(*root)
+		if err != nil {
+			return loadError(err)
+		}
+		report, err := buildStatus(c, *profile, install.Engine{Runner: newRunner(), Platform: runtime.GOOS})
+		if err != nil {
+			return loadError(err)
+		}
+		if *machine {
+			return printJSON(report)
+		}
+		printStatus(report)
+		return 0
 	case "plan":
 		fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
@@ -356,5 +381,6 @@ func usage() {
 	fmt.Println("       suitectl verify --app localsend [--json]")
 	fmt.Println("       suitectl apply --app <id> --yes [--non-interactive] (consent required)")
 	fmt.Println("       suitectl apply --profile essential --yes [--non-interactive] (one consent for the shown plan)")
+	fmt.Println("       suitectl status [--profile essential] [--json] (read-only: desired vs observed vs recorded)")
 	fmt.Println("The catalog is embedded; --root <checkout> reads a development copy instead.")
 }

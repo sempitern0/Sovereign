@@ -115,3 +115,26 @@ func TestDefaultDirIsAbsolute(t *testing.T) {
 		t.Fatalf("relative state dir %q", dir)
 	}
 }
+
+func TestPeekNeverModifiesFiles(t *testing.T) {
+	s := fixedStore(t)
+	if j, err := s.Peek(); err != nil || len(j.Entries) != 0 {
+		t.Fatalf("missing journal: %v %v", j, err)
+	}
+	if _, err := os.Stat(s.Dir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("Peek created the state directory")
+	}
+	if err := os.MkdirAll(s.Dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(s.Path(), []byte("garbage"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Peek(); !errors.Is(err, ErrUnreadableJournal) {
+		t.Fatalf("got %v", err)
+	}
+	entries, _ := os.ReadDir(s.Dir)
+	if len(entries) != 1 {
+		t.Fatalf("Peek touched the directory: %v", entries)
+	}
+}
