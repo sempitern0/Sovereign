@@ -25,13 +25,13 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 `PLAN_TECNICO_SUITE_LIBRE.md` is the product source of truth; accepted ADRs and code override it where they differ.
 
 ## Security invariants
-- `doctor`, `catalog list`, `profiles list` and `plan` are read-only. `verify` is read-only. Only `apply --app <id> --yes` changes the host, and only for allowlisted applications; everything else fails closed.
+- `doctor`, `catalog list`, `profiles list` and `plan` are read-only. `verify` is read-only. Only `apply --app <id> --yes` and `apply --profile <id> --yes` change the host, and only for allowlisted applications; everything else fails closed.
 - Installation requires a `verified` catalog entry that matches `catalog/install-allowlist.yaml` field by field. The allowlist is embedded at build time and must never be read from `--root` or any runtime path. Adding an entry enables real installs: one application per reviewed PR, with real-device acceptance.
 - Never install `pending` or `unsupported` packages. Never treat `inspection_required` as proof of an installed package. Ambiguous provider output fails closed.
 - Package managers run with structured arguments, never through a shell. No remote-script pipelines, silent elevation, repository/remote additions, auto-accepted agreements, telemetry or destructive operations (no uninstall, cleanup or overwrite by default).
 - Install scope is `user` unless the allowlist entry declares `machine` (Windows only, ADR-0006): the plan warns, and `apply` runs it only from an attended terminal so the OS shows its own administrator prompt. Community-built packages (`provenance: community`) are flagged to the user and accepted per app by the maintainer.
-- No installation side effects in tests: use simulated providers (`install.Runner`, `newRunner`/`isTerminal` in the CLI). Treat JSON status 0 as successful planning only.
-- Never store secrets, user files, host identifiers or personal paths in Git, logs, plans or exported profiles.
+- No installation side effects in tests: use simulated providers (`install.Runner`, `newRunner`/`isTerminal`/`detectProviders` in the CLI); CLI tests never touch the real state directory (`newStore`, set in `TestMain`). Treat JSON status 0 as successful planning only.
+- Never store secrets, user files, host identifiers or personal paths in Git, logs, plans, the journal or exported profiles. The journal (`internal/state`) records error classes only (`install.ErrorClass`), never raw package-manager output.
 - Multisuite is optional. Local use cannot depend on a network, account, VPN or NAS; a connector must degrade to the local flow.
 - Keep YAML and JSON Schema versioned; reject invalid references, missing alternatives, unknown keys and dependency cycles.
 - Bootstrap: pinned official archives, SHA-256 verified before extraction, installed only under the user's data directory, no elevation. Windows may add only the reviewed toolchain `bin` to the HKCU user PATH idempotently (opt-out `-NoPath`); never the machine PATH. Linux does not persist PATH. Release binaries must not require Go.
@@ -54,6 +54,7 @@ python3 -m pip install -r tools/requirements.txt
 python3 tools/validate_catalog.py
 python3 -m unittest discover -s tests -v
 sh -n bootstrap/setup.sh
+git status --short --ignored -- cmd internal   # new source files must not show as ignored ("!!")
 # CI also runs on Windows: go vet/test, bootstrap/setup.ps1 parse and smoke test
 ```
 Catalog edits are embedded at build time: test them with `--root .` or rebuild.

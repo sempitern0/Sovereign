@@ -12,7 +12,8 @@ __pycache__/
 .env.*
 !.env.example
 .local/
-state/
+# Root-level local state only; internal/state is source code.
+/state/
 BibliotecaPersonal/
 *.kdbx
 *.key

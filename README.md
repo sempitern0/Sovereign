@@ -15,6 +15,7 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 - Windows/Linux CI, Go tests and negative catalog tests.
 - `apply --app <id> --yes` and `verify --app <id>` work on the host OS for allowlisted apps only (LocalSend, VLC, LibreOffice). Other apps and Android remain blocked; `plan` is read-only.
 - The catalog, profiles and the reviewed install allowlist are embedded in the binary, so `suitectl` works from any directory without a checkout. `--root <checkout>` reads a development copy of the catalog and profiles; the allowlist is always the embedded one ([ADR-0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md)).
+- `apply --profile essential` installs everything the profile still needs with **one** consent covering the plan it prints first, keeps going after a failure, skips applications whose dependencies failed and ends with a per-app summary (exit 1 if incomplete; re-run to finish). Results go to a small local journal without personal data, and a lock prevents two runs at once ([ADR-0007](docs/architecture/adr/0007-profile-apply-and-journal.md)).
 - Blocked plan entries include a `next_step` with the exact action to take (for example, how to install a missing package manager).
 
 `apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no prebuilt release yet (milestone H4): run from a clone with the bootstrap below.
@@ -89,7 +90,7 @@ A plan carries no private metadata and can be generated entirely offline. Cross-
 - `integrations/multisuite`: design notes for the optional connector (H8); no code yet.
 - `android`: guided onboarding (H6); no silent APK installation.
 
-The repository's [technical plan](PLAN_TECNICO_SUITE_LIBRE.md) is authoritative. Development instructions: [AGENTS.md](AGENTS.md) (Claude Code: [CLAUDE.md](CLAUDE.md)). Security: [SECURITY.md](SECURITY.md). ADRs: [0001](docs/architecture/adr/0001-core-stack.md), [0002](docs/architecture/adr/0002-planning-contract.md), [0003](docs/architecture/adr/0003-first-provider.md), [0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md), [0005](docs/architecture/adr/0005-roadmap-release-first.md), [0006](docs/architecture/adr/0006-install-scope-and-provenance.md).
+The repository's [technical plan](PLAN_TECNICO_SUITE_LIBRE.md) is authoritative. Development instructions: [AGENTS.md](AGENTS.md) (Claude Code: [CLAUDE.md](CLAUDE.md)). Security: [SECURITY.md](SECURITY.md). ADRs: [0001](docs/architecture/adr/0001-core-stack.md), [0002](docs/architecture/adr/0002-planning-contract.md), [0003](docs/architecture/adr/0003-first-provider.md), [0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md), [0005](docs/architecture/adr/0005-roadmap-release-first.md), [0006](docs/architecture/adr/0006-install-scope-and-provenance.md), [0007](docs/architecture/adr/0007-profile-apply-and-journal.md).
 
 ## Delivery sequence
 

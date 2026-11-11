@@ -3,6 +3,8 @@ package install
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
@@ -397,5 +399,26 @@ func TestLibreOfficeWindowsDeclaresDependencies(t *testing.T) {
 	c.Apps["libreoffice"] = app
 	if _, err := (Engine{}).Resolve(c, "libreoffice", "windows"); err == nil {
 		t.Fatal("dependency drift accepted")
+	}
+}
+
+func TestErrorClassIsStableAndSafe(t *testing.T) {
+	secret := errors.New(`C:\Users\someone\AppData\Local\Temp\winget.log`)
+	for err, want := range map[error]string{
+		nil:                                   "",
+		ErrConsentRequired:                    "consent_required",
+		ErrAdminApprovalNeedsTerminal:         "admin_terminal_required",
+		ErrFlathubRemoteMissing:               "flathub_remote_missing",
+		fmt.Errorf("x: %w", exec.ErrNotFound): "provider_not_found",
+		context.DeadlineExceeded:              "timeout",
+		ErrNotDetectedAfterInstall:            "verification_failed",
+		fmt.Errorf("%w: %w", ErrVerifyAfterInstall, secret):   "verification_failed",
+		fmt.Errorf("WinGet %w: %w", ErrInstallFailed, secret): "install_failed",
+		secret: "inspection_failed",
+	} {
+		got := ErrorClass(err)
+		if got != want || strings.Contains(got, "Users") {
+			t.Errorf("ErrorClass(%v) = %q, want %q", err, got, want)
+		}
 	}
 }
