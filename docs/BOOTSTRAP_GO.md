@@ -1,6 +1,6 @@
 # Bootstrap de Go — Windows y Linux
 
-Estado: soporte inicial de desarrolladores, incluido en la PR H2. **No es necesario instalar Go para ejecutar futuros binarios compilados de Sovereign**; los futuros ZIPs de release contendrán un ejecutable autónomo.
+Estado: soporte inicial de desarrolladores, incluido en la PR H2. **No es necesario instalar Go para ejecutar futuros binarios compilados de Sovereign**; los ZIPs de release del hito H4 contendrán un ejecutable autónomo y el bootstrap pasará a descargar y verificar esa release ([ADR-0005](architecture/adr/0005-roadmap-release-first.md)).
 
 ## Comportamiento
 

@@ -46,9 +46,10 @@ Status: proposed (2026-11-11). Refines ADR-0003; does not widen what can be inst
 
 ## Consequences
 
-- The allowlist still contains only LocalSend for Windows and Linux. Enabling
-  any other application remains blocked on H2 real-device acceptance (AGENTS.md).
-- `apply --profile` is deliberately not added: AGENTS.md limits H2 to
-  `apply --app localsend`. The generic adapter is the prerequisite for it.
+- The allowlist still contains only LocalSend for Windows and Linux. Each
+  further application needs its own verification, allowlist entry and
+  real-device acceptance (AGENTS.md checklist).
+- `apply --profile` is deliberately not added here; it is planned for H3
+  (ADR-0005). The generic adapter is its prerequisite.
 - Editing YAML on disk no longer affects a built binary; developers pass
   `--root .` (or rebuild) to test catalog changes.

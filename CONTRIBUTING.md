@@ -1,5 +1,5 @@
 # Contributing
 
-Open focused PRs with acceptance criteria and test results. Read AGENTS.md and the technical plan first. Do not run real installation on users' machines from unit tests.
+Open focused PRs with acceptance criteria and test results. Start with [docs/STATUS.md](docs/STATUS.md) and [AGENTS.md](AGENTS.md), which says which parts of the technical plan each task needs. Do not run real installations from tests; use simulated providers.
 
-For new applications: link official upstream, record license, platform, verified package source/publisher and date. Keep unverified packages pending. Run Go tests, schema validator and Python tests, then review security impacts.
+For new applications follow «Adding or verifying an application» in AGENTS.md: official upstream, license, exact package ID and source per platform with date, a matching entry in `catalog/install-allowlist.yaml`, and real-device acceptance recorded in STATUS. Keep unverified packages pending. Update STATUS at the end of every PR.
