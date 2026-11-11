@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -86,25 +86,43 @@ func (c Catalog) ProfileIDs() []string {
 	return keys
 }
 
+// Load reads manifests from a directory on disk (development and --root).
 func Load(root string) (Catalog, error) {
+	return LoadFS(os.DirFS(root))
+}
+
+// LoadFS reads manifests from any filesystem, including the catalog embedded in
+// the suitectl binary. Paths use forward slashes as required by io/fs.
+func LoadFS(fsys fs.FS) (Catalog, error) {
 	c := Catalog{Apps: map[string]Application{}, Profiles: map[string]Profile{}}
 	for _, kind := range []string{"catalog/apps", "profiles"} {
-		paths, err := filepath.Glob(filepath.Join(root, kind, "*.yaml"))
-		if err != nil {
+		entries, err := fs.ReadDir(fsys, kind)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return c, err
 		}
-		if len(paths) == 0 {
+		var names []string
+		for _, entry := range entries {
+			if strings.HasSuffix(entry.Name(), ".yaml") {
+				names = append(names, entry.Name())
+			}
+		}
+		if len(names) == 0 {
 			return c, fmt.Errorf("%s: no YAML manifests", kind)
 		}
-		sort.Strings(paths)
-		for _, path := range paths {
-			id := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		sort.Strings(names)
+		byName := map[string]fs.DirEntry{}
+		for _, entry := range entries {
+			byName[entry.Name()] = entry
+		}
+		for _, name := range names {
+			path := kind + "/" + name
+			id := strings.TrimSuffix(name, ".yaml")
 			if !identifier.MatchString(id) {
 				return c, fmt.Errorf("%s: invalid filename", path)
 			}
 			if kind == "catalog/apps" {
 				var a Application
-				if err := decode(path, &a); err != nil {
+				if err := decode(fsys, path, byName[name], &a); err != nil {
 					return c, err
 				}
 				if err := validateApp(a, id); err != nil {
@@ -113,7 +131,7 @@ func Load(root string) (Catalog, error) {
 				c.Apps[id] = a
 			} else {
 				var p Profile
-				if err := decode(path, &p); err != nil {
+				if err := decode(fsys, path, byName[name], &p); err != nil {
 					return c, err
 				}
 				if err := validateProfile(p, id); err != nil {
@@ -129,20 +147,28 @@ func Load(root string) (Catalog, error) {
 	return c, nil
 }
 
-func decode(path string, target any) error {
-	info, err := os.Lstat(path)
+// decode rejects symlinks, non-regular and oversized files before parsing.
+// fs.DirEntry.Type reports the entry itself, without following symlinks.
+func decode(fsys fs.FS, path string, entry fs.DirEntry, target any) error {
+	info, err := entry.Info()
 	if err != nil {
 		return err
 	}
-	if !info.Mode().IsRegular() || info.Size() > maxManifestSize {
+	if !entry.Type().IsRegular() || info.Size() > maxManifestSize {
 		return fmt.Errorf("%s: only regular YAML files of at most %d bytes allowed", path, maxManifestSize)
 	}
-	f, err := os.Open(path)
+	f, err := fsys.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	decoder := yaml.NewDecoder(io.LimitReader(f, maxManifestSize+1))
+	return DecodeStrict(io.LimitReader(f, maxManifestSize+1), path, target)
+}
+
+// DecodeStrict decodes exactly one YAML document, rejecting unknown fields and
+// duplicate keys.
+func DecodeStrict(r io.Reader, path string, target any) error {
+	decoder := yaml.NewDecoder(r)
 	decoder.KnownFields(true)
 	if err := decoder.Decode(target); err != nil {
 		return fmt.Errorf("%s: %w", path, err)

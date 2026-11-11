@@ -26,6 +26,9 @@ type Operation struct {
 	Status       string `json:"status"`
 	Reason       string `json:"reason"`
 	Verification string `json:"verification,omitempty"`
+	// NextStep is a short, human instruction for resolving a blocked or
+	// actionable state. It never implies that Sovereign will act on its own.
+	NextStep string `json:"next_step,omitempty"`
 }
 
 // Plan has no timestamps, host identifiers or local paths: identical inputs
@@ -130,8 +133,9 @@ func Build(c catalog.Catalog, profileID string, device Device) (Plan, error) {
 		case !required[id]:
 			op.Status, op.Reason = "optional", "Optional application; no automatic action"
 		case !device.Providers[entry.Provider]:
-			op.Status, op.Reason = "provider_unavailable", "Package manager unavailable"
+			op.Status, op.Reason = "provider_unavailable", fmt.Sprintf("Package manager %s not found on this device", entry.Provider)
 			op.Provider, op.PackageID = entry.Provider, entry.PackageID
+			op.NextStep = ProviderSetupHint(entry.Provider)
 		default:
 			op.Status, op.Reason = "inspection_required", "Package verified; installed state is not yet inspected (H2)"
 			op.Action, op.Provider, op.PackageID = "inspect", entry.Provider, entry.PackageID
@@ -140,6 +144,18 @@ func Build(c catalog.Catalog, profileID string, device Device) (Plan, error) {
 		plan.Operations = append(plan.Operations, op)
 	}
 	return plan, nil
+}
+
+// ProviderSetupHint explains how a user can make a provider available. Sovereign
+// never installs package managers itself.
+func ProviderSetupHint(provider string) string {
+	switch provider {
+	case "winget":
+		return "Install or update App Installer (WinGet) from Microsoft Store, then run: suitectl doctor"
+	case "flatpak":
+		return "Install Flatpak with your distribution's package manager (https://flathub.org/setup), then run: suitectl doctor"
+	}
+	return ""
 }
 
 func sortedKeys(m map[string]bool) []string {

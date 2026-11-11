@@ -1,17 +1,19 @@
 # Suite Libre — Plan técnico de alto nivel
 
-> **Estado:** RFC / documento de arranque para agentes de IA y desarrolladores.  
-> **Versión del plan:** 1.0 · 2026-11-09  
+> **Estado:** plan vigente; H0–H2 completados. Estado operativo y siguiente acción: [`docs/STATUS.md`](docs/STATUS.md).  
+> **Versión del plan:** 1.1 · 2026-11-11 (orden de hitos revisado en [ADR-0005](docs/architecture/adr/0005-roadmap-release-first.md); v1.0 · 2026-11-09).  
 > **Plataformas objetivo:** Windows, Linux y Android.  
 > **Servidor opcional:** Multisuite (interoperabilidad por capacidades; nunca requisito de funcionamiento).  
-> **Documento de producto de referencia:** `PLAN_SUITE_LIBRE_OFFLINE.md`.
+> **Documento de producto de origen:** `PLAN_SUITE_LIBRE_OFFLINE.md` (externo; no está versionado en este repositorio). Este plan recoge lo necesario de él.
+
+**Cómo leer este documento.** Es el *qué* y el *porqué* del producto. No hace falta leerlo entero en cada iteración: [`AGENTS.md`](AGENTS.md) indica qué secciones leer según la tarea, y `docs/STATUS.md` dice qué está hecho y qué toca ahora. Si este plan contradice una ADR aceptada o el código, prevalecen la ADR y el código; registra la discrepancia en STATUS.
 
 ## 0. Instrucciones de ejecución para cualquier agente
 
 Este documento es la fuente de verdad inicial para iniciar el desarrollo. Antes de codificar:
 
 1. Inspeccionar el repositorio existente y **reutilizar** sus convenciones, herramientas y CI. Si está vacío, aplicar el diseño propuesto aquí. No asumir que Multisuite está instalado ni accesible.
-2. Leer este plan, `README.md`, `AGENTS.md`, las decisiones arquitectónicas (ADR) y los manifiestos existentes. Identificar decisiones ya implementadas antes de cambiarlas.
+2. Leer `docs/STATUS.md`, `AGENTS.md` y las secciones de este plan y ADR que indique AGENTS.md para la tarea. Identificar decisiones ya implementadas antes de cambiarlas.
 3. Proponer una implementación incremental **por pull request**, con alcance acotado, pruebas, documentación y criterio de aceptación. Evitar refactorizaciones ajenas al hito.
 4. Priorizar un **camino completo y verificable** (manifest → plan → instalación → verificación) frente a implementar muchas aplicaciones parcialmente.
 5. No inventar identificadores de paquetes, APIs, URLs de publicación ni permisos: contrastarlos con fuentes oficiales, anotando fuente y fecha de verificación.
@@ -19,7 +21,7 @@ Este documento es la fuente de verdad inicial para iniciar el desarrollo. Antes 
 7. Si falta una decisión no bloqueante, adoptar el valor por defecto documentado y registrar un ADR. Si compromete seguridad o datos, marcar la operación como no soportada y continuar con lo seguro.
 8. Al terminar cada PR: explicar cambios, comandos de prueba, resultados reales, limitaciones y siguiente paso; no declarar superadas pruebas que no se ejecutaron.
 
-**Primera tarea recomendada:** Hito H0 (estructura, especificaciones, validación automática) y después H1 (CLI con `doctor` y `plan` para un perfil mínimo). No empezar por la UI gráfica ni por conectores NAS.
+**Tarea actual:** la indicada en `docs/STATUS.md` (H3 al cerrar H2). No empezar por la UI gráfica ni por conectores NAS.
 
 ---
 
@@ -265,6 +267,13 @@ No todas las operaciones estarán implementadas en todos los conectores. Un cone
 
 **Compatibilidad:** validar versiones y endpoints reales del repositorio Multisuite antes de escribir adaptadores. No asumir que Paperless-ngx/HomeBox están desplegados por aparecer en el catálogo.
 
+### Estado real de Multisuite (revisado 2026-11-11)
+
+- Multisuite es un **portal privado Laravel/Livewire** que enlaza servicios existentes, cada uno con su interfaz y sus cuentas. Hoy integra **Navidrome** (música) y aprovisiona cuentas de Navidrome por invitación. No hay SSO.
+- **No expone ninguna API para clientes como Sovereign.** El acceso remoto privado (VPN/TLS) sigue pendiente en su hito P03.
+- Su ampliación prevista (P04) evalúa Komga (lectura), Jellyfin (vídeo) y un servicio de notas. Paperless-ngx y HomeBox **no** están en su hoja de ruta: la tabla anterior son candidatos de Sovereign, no servicios disponibles.
+- Por tanto, H8 empieza con un **contrato escrito y acordado en ambos repositorios** (descubrimiento de servicios autorizados para el usuario, capacidades, salud y versión). El primer caso de uso es música: Sovereign propondría instalar un cliente compatible con la API Subsonic de Navidrome y mostrar la URL del servicio, **sin almacenar credenciales** de Multisuite. Detalle y prerrequisitos: [`integrations/multisuite/README.md`](integrations/multisuite/README.md).
+
 ## 7. Seguridad, privacidad y cadena de suministro
 
 - Adherirse proporcionalmente a **NIST SSDF (SP 800-218)**, prácticas **OpenSSF** y principio de mínimo privilegio. Registrar amenazas y mitigaciones breves en `docs/security/threat-model.md`.
@@ -313,101 +322,75 @@ No todas las operaciones estarán implementadas en todos los conectores. Un cone
 
 **Definición de terminado (DoD) de toda PR:** código y pruebas pasando; documentación actualizada; cambios de contrato versionados; seguridad y privacidad revisadas; rutas de error implementadas; logs sin secretos; comandos de comprobación reproducibles; riesgos pendientes explícitos. No se fusiona por apariencia de funcionamiento.
 
-## 9. Estructura propuesta del repositorio
+## 9. Estructura del repositorio
+
+Estructura **real** a 2026-11-11. Las carpetas marcadas *(futuro)* se crean solo cuando un hito las necesite; no anticiparlas.
 
 ```text
-suite-libre/
-├── README.md
-├── AGENTS.md
-├── LICENSE
-├── SECURITY.md
-├── CONTRIBUTING.md
-├── CHANGELOG.md
-├── go.mod
-├── cmd/suitectl/
+Sovereign/
+├── README.md · AGENTS.md · CLAUDE.md · LICENSE · SECURITY.md · CONTRIBUTING.md · CHANGELOG.md
+├── PLAN_TECNICO_SUITE_LIBRE.md      # este plan
+├── embed.go                         # catálogo, perfiles y allowlist incrustados (ADR-0004)
+├── go.mod / go.sum
+├── cmd/suitectl/                    # CLI: argumentos, salida y mapeo de errores
 ├── internal/
-│   ├── catalog/
-│   ├── platform/
-│   ├── resolver/
-│   ├── planner/
-│   ├── executor/
-│   ├── providers/
-│   │   ├── winget/
-│   │   ├── flatpak/
-│   │   └── native_linux/
-│   ├── state/
-│   ├── diagnostics/
-│   └── connectors/
-├── catalog/apps/
-├── profiles/
-├── schemas/
-├── integrations/multisuite/
-├── android/                 # manifiestos/guías, no app en MVP
-├── bootstrap/
-│   ├── setup.ps1
-│   └── setup.sh
-├── offline/                 # manifiestos; no datos privados
-├── testdata/
-├── tests/integration/
-├── docs/
-│   ├── architecture/adr/
-│   ├── user/
-│   ├── security/
-│   └── recovery/
+│   ├── catalog/                     # carga y validación estricta de YAML
+│   ├── planner/                     # resolución determinista de perfiles (sin efectos)
+│   ├── install/                     # allowlist, WinGet/Flatpak, runner de procesos
+│   ├── diagnostics/                 # doctor
+│   ├── state/                       # (futuro, H3) journal local con escritura atómica y bloqueo
+│   └── connectors/                  # (futuro, H8) conectores opcionales
+├── catalog/apps/ · catalog/install-allowlist.yaml · profiles/ · schemas/
+├── tools/validate_catalog.py · tests/            # contrato del catálogo (Python, CI)
+├── bootstrap/                       # setup.sh / setup.ps1 (hoy: Go de usuario; H4: release verificada)
+├── integrations/multisuite/ · android/           # notas de diseño; sin código hasta H8 / H6
+├── docs/STATUS.md · docs/architecture/adr/ · docs/security/ · docs/recovery/
 └── .github/workflows/
 ```
 
-`AGENTS.md` debe enlazar al presente plan y contener solo instrucciones operativas de desarrollo (comandos, estructura, CI, normas de PR), evitando duplicarlo y que ambas fuentes diverjan.
+`AGENTS.md` contiene solo instrucciones operativas (lectura, comandos, invariantes, normas de PR) y enlaza aquí, sin duplicar el plan.
 
-## 10. Hoja de ruta acelerada y entregables
+## 10. Hoja de ruta y entregables
 
-> Hitos secuenciales; **una PR por hito** y, si crece demasiado, dividir en PRs verticales. No comprometer plazos sin medir el trabajo y disponer de runners/dispositivos. Priorizar la entrega funcional más pequeña.
+> Orden revisado en [ADR-0005](docs/architecture/adr/0005-roadmap-release-first.md): primero un perfil instalable y una release que no exija Git ni Go; después datos, Android, kits offline y, al final, la integración opcional con Multisuite. **Una PR por incremento revisable**; un hito empieza cuando el anterior tiene evidencia registrada en `docs/STATUS.md`. El estado de cada hito vive en STATUS, no aquí.
 
 | Hito | Alcance implementable | Evidencia de aceptación |
 | --- | --- | --- |
-| **H0 — Fundación** | Repositorio, licencia, AGENTS, ADR-001, esquema v1, catálogo mínimo, CI de validación | PR verde; catálogo erróneo falla CI; documentación permite arrancar el proyecto desde cero |
-| **H1 — Motor de planificación** | CLI `doctor`, `catalog`, `profiles`, `plan`; detector de plataforma y proveedor simulado | Dry-run determinista, JSON versionado, tests de alternativas e incompatibilidades |
-| **H2 — Instalación real de escritorio** | WinGet + Flatpak, `apply`, registro y `verify`; 3–6 apps del perfil esencial verificadas | En Windows y Linux: instalar, verificar y repetir sin efectos duplicados; fallos parciales visibles |
-| **H3 — Datos y portabilidad** | Carpetas locales, perfiles exportables, estado recuperable, guía de backup y prueba de recuperación | No se sobrescriben archivos; export/import probado; restauración de muestra |
-| **H4 — Android guiado** | Selección del perfil y fuentes F-Droid/Obtainium, permisos y comprobaciones documentadas | Incorporación guiada verificable, sin prometer instalación desatendida |
-| **H5 — Integración opcional** | Primer conector Multisuite basado en una API real elegida (preferencia: música o documentos) | Con NAS operativo: caso de uso completo; con NAS apagado: flujo local intacto |
-| **H6 — Offline ampliado** | Kits de instalación verificados por plataforma, recursos esenciales y simulacro | Instalación offline de muestra donde haya bundle; comprobación de uso offline sin NAS |
-| **H7 — Release y UX** | Asistente TUI/GUI si compensa, documentación para usuarios, bundles firmados y soporte estable | Release reproducible, guías Windows/Linux/Android y checklist de aceptación |
+| **H0 — Fundación** | Repositorio, licencia, AGENTS, ADR-0001, esquema v1, catálogo mínimo, CI de validación | Catálogo erróneo falla CI |
+| **H1 — Planificación** | `doctor`, `catalog`, `profiles`, `plan`; detección de plataforma y proveedores | Plan determinista, JSON versionado, tests de alternativas e incompatibilidades |
+| **H2 — Primera instalación** | LocalSend en WinGet y Flatpak: `apply` con consentimiento, `verify`, idempotencia; catálogo incrustado y allowlist (ADR-0003/0004) | Instalar, verificar y repetir sin duplicar en Windows y Linux reales |
+| **H3 — Perfil esencial instalable** | Verificar e incorporar apps del perfil `essential` **una por PR** (VLC y LibreOffice primero); `apply --profile` con un único consentimiento sobre el plan mostrado, resumen por paso y fallos parciales visibles; journal local en `internal/state` (escritura atómica, bloqueo contra dos `apply` simultáneos, sin secretos); `status` | Perfil completo en un equipo limpio de cada SO; segunda ejecución sin cambios; fallo de una app no corrompe el resto; journal reconstruible con `doctor` |
+| **H4 — Primera release distribuible** | Binarios Windows/Linux x86-64 y ARM64 generados en CI; ZIP con checksums, SBOM y procedencia firmada; bootstrap que descarga y verifica la release en lugar de Go; dependencias vendorizadas para compilar sin red | Usuario sin Git ni Go descarga, verifica y ejecuta `plan`/`apply`; build reproducible documentado |
+| **H5 — Datos y portabilidad** | `BibliotecaPersonal` configurable y no destructiva; `export-profile`/import; guía de backup y restauración de muestra | No se sobrescriben archivos; export/import probado en otro equipo; restauración comprobada |
+| **H6 — Android guiado** | Selección de perfil y fuentes F-Droid/Obtainium verificadas; guía de permisos; comprobaciones documentadas | Incorporación guiada en emulador y dispositivo real, sin instalación silenciosa |
+| **H7 — Kits offline** | Kits por SO/arquitectura con paquetes verificados y derechos de redistribución revisados; recursos esenciales (p. ej. Kiwix) por elección explícita; `verify --offline` | Instalación de muestra sin red donde haya kit; uso offline comprobado sin NAS |
+| **H8 — Conector Multisuite opcional** | Contrato acordado con el repositorio Multisuite (descubrimiento de servicios autorizados, capacidades, salud); primer caso: música vía Navidrome; credenciales en el almacén seguro del SO | Con Multisuite accesible: caso completo; apagado o sin VPN: flujo local intacto |
+| **H9 — UX y guías** | TUI/GUI solo si los contratos están estables y compensa; guías de usuario Windows/Linux/Android | Checklist de aceptación de usuario final |
 
-### Primer sprint: backlog directamente ejecutable
+### Siguiente backlog ejecutable (H3)
 
-**PR 1 — Bootstrap de ingeniería**
-- Crear estructura mínima, README, AGENTS, licencia y ADR-001.
-- Implementar esquema v1 de aplicaciones/perfiles y 2–3 fixtures de catálogo (válido, incompatible, inválido).
-- Configurar CI con formato, lint, unit tests y validación semántica.
-- Entregar comando documentado para validar el catálogo localmente.
+**PR H3-1 — VLC verificado.** Contrastar IDs y fuentes oficiales de WinGet y Flathub con fecha; marcar `verified` en el catálogo; añadir entradas a la allowlist; tests con proveedor simulado; aceptación en dispositivo real antes de fusionar.
 
-**PR 2 — Planificador sin efectos laterales**
-- Modelar `Device`, `Profile`, `Application`, `Operation`.
-- Detectar OS/arquitectura y disponibilidad básica de WinGet/Flatpak sin instalar nada.
-- Implementar `doctor`, `profiles list`, `plan --profile essential` y salida JSON.
-- Añadir pruebas de determinismo, alternativas, plataforma no soportada y error de catálogo.
+**PR H3-2 — LibreOffice verificado.** Igual que H3-1. Revisar tamaño y runtimes de Flatpak y avisarlo en el plan.
 
-**PR 3 — Primer recorrido extremo a extremo**
-- Elegir una sola aplicación con paquetes confirmados para Windows/Linux.
-- Implementar adaptadores con `is_installed`/`install`/`verify` y proveedor falso de test.
-- Ejecutar `plan → apply con consentimiento → verify → apply otra vez`.
-- Producir guía de prueba real con logs anonimizados y fallos conocidos.
+**PR H3-3 — `apply --profile` y journal.** Ejecutar solo entradas instalables del plan mostrado, con un consentimiento; continuar ante fallos de una app y devolver resultado global no exitoso; journal atómico con bloqueo. Probar interrupción y segunda ejecución.
 
-**No ampliar catálogo ni conectar Multisuite hasta que PR 3 funcione.** Este corte reduce el tiempo de feedback y el riesgo de construir arquitectura no validada.
+**PR H3-4 — `status`.** Mostrar estado observado frente al deseado a partir del journal y los gestores, sin efectos.
+
+No ampliar Android, kits offline ni Multisuite hasta cerrar H3 y H4.
 
 ## 11. Criterios de aceptación de la primera versión útil
 
-- [ ] Un usuario puede descargar un ZIP verificado, ejecutar el instalador apropiado y ver el plan sin tener Git.
-- [ ] `suitectl plan --profile essential` no modifica sistema ni datos y explica por qué omite aplicaciones incompatibles.
-- [ ] Windows y una distribución Linux objetivo instalan y verifican un subconjunto publicado del perfil esencial.
-- [ ] Segunda ejecución sin cambios no reinstala software ni pisa configuraciones.
-- [ ] Los errores de instalación y permisos son claros; no se ocultan fallos parciales.
-- [ ] Se crea o reutiliza `BibliotecaPersonal` sin pérdida de archivos preexistentes.
-- [ ] Los archivos de muestra se abren sin Internet y sin Multisuite.
-- [ ] Es posible exportar el perfil y reconstruir el plan en otro equipo compatible.
-- [ ] El proyecto no solicita ni registra secretos, no envía telemetría y no necesita iniciar sesión.
-- [ ] CI, revisión de seguridad y pruebas exigidas por la release están documentadas y ejecutadas.
+- [ ] Un usuario puede descargar un ZIP verificado, ejecutar el instalador apropiado y ver el plan sin tener Git. *(H4)*
+- [x] `suitectl plan --profile essential` no modifica sistema ni datos y explica por qué omite aplicaciones incompatibles. *(H1–H2: estados, motivo y `next_step`)*
+- [ ] Windows y una distribución Linux objetivo instalan y verifican un subconjunto publicado del perfil esencial. *(H3; LocalSend ya lo cumple desde H2)*
+- [ ] Segunda ejecución sin cambios no reinstala software ni pisa configuraciones. *(H3 para el perfil; cumplido para LocalSend en H2)*
+- [ ] Los errores de instalación y permisos son claros; no se ocultan fallos parciales. *(H3)*
+- [ ] Se crea o reutiliza `BibliotecaPersonal` sin pérdida de archivos preexistentes. *(H5)*
+- [ ] Los archivos de muestra se abren sin Internet y sin Multisuite. *(H5)*
+- [ ] Es posible exportar el perfil y reconstruir el plan en otro equipo compatible. *(H5)*
+- [ ] El proyecto no solicita ni registra secretos, no envía telemetría y no necesita iniciar sesión. *(invariante desde H0; revisión formal en H4)*
+- [ ] CI, revisión de seguridad y pruebas exigidas por la release están documentadas y ejecutadas. *(H4)*
 
 **El soporte Android del MVP es guiado, no plenamente automático.** La automatización móvil completa, la sincronización entre aplicaciones y el kit de reinstalación totalmente offline pertenecen a hitos posteriores y no deben presentarse como ya resueltos.
 
@@ -428,7 +411,7 @@ suite-libre/
 
 ## 13. Referencias oficiales y procedencia
 
-**Origen funcional:** `PLAN_SUITE_LIBRE_OFFLINE.md` (objetivos, catálogo inicial, estructura `BibliotecaPersonal`, límites de offline y pruebas de aceptación). Las decisiones de stack, contratos, fases y gates del presente documento son **propuestas técnicas nuevas**, aún no implementadas ni validadas en dispositivos reales.
+**Origen funcional:** `PLAN_SUITE_LIBRE_OFFLINE.md`, documento externo no versionado aquí (objetivos, catálogo inicial, estructura `BibliotecaPersonal`, límites de offline y pruebas de aceptación). Lo necesario está incorporado en este plan. Lo implementado y validado se registra en `docs/STATUS.md`; el resto de este documento sigue siendo propuesta.
 
 Referencias de implementación y seguridad:
 
@@ -445,4 +428,4 @@ Referencias de implementación y seguridad:
 
 ## Orden de ejecución autorizado por este plan
 
-**Empezar H0 → H1 → H2 (con una sola aplicación validada).** Mantener Multisuite como conector opt-in y reservar Android guiado, bibliotecas completas, sincronización, kits offline y UI para hitos posteriores. Cada avance debe conservar seguridad, reproducibilidad, datos locales y ausencia de dependencia obligatoria del NAS.
+**H0 → H1 → H2 completados. Seguir H3 → H4 → H5 → H6 → H7 → H8 → H9** ([ADR-0005](docs/architecture/adr/0005-roadmap-release-first.md)). Cada incremento conserva seguridad, reproducibilidad, datos locales y ausencia de dependencia obligatoria de Multisuite o de cualquier servicio de red.

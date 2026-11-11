@@ -109,3 +109,17 @@ func TestSelectedAlternativeIsRequired(t *testing.T) {
 		t.Fatalf("wrong choice %+v", p.Operations)
 	}
 }
+
+func TestProviderUnavailableExplainsNextStep(t *testing.T) {
+	c := catalog.Catalog{Apps: map[string]catalog.Application{
+		"alpha": {ID: "alpha", Platforms: map[string]catalog.Platform{"linux": {Status: "verified", Provider: "flatpak", PackageID: "org.example.Alpha", VerifiedAt: "2026-11-10"}}},
+	}, Profiles: map[string]catalog.Profile{"p": {ID: "p", Applications: []string{"alpha"}}}}
+	plan, err := Build(c, "p", Device{Platform: "linux"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	op := plan.Operations[0]
+	if op.Status != "provider_unavailable" || !strings.Contains(op.Reason, "flatpak") || !strings.Contains(op.NextStep, "flathub.org/setup") {
+		t.Fatalf("unhelpful blocked state: %+v", op)
+	}
+}

@@ -1,6 +1,8 @@
 # H2 — LocalSend, primer flujo de instalación segura
 
-Estado: **experimental, pendiente de QA real en Windows y Linux**. El código de CI simula los gestores y no instala software.
+Estado: **aceptado**. El mantenedor confirmó pruebas en dispositivos reales el 2026-11-11 (sin registros adjuntos). La CI simula los gestores y no instala software.
+
+Este documento es también la **plantilla de aceptación** para cada nueva aplicación instalable (ver «Adding or verifying an application» en `AGENTS.md`).
 
 ## Proveniencia verificada el 2026-11-10
 
@@ -16,7 +18,7 @@ Si Go no está disponible, usar `sh bootstrap/setup.sh --json` en Linux o `power
 
 ## Primer uso
 
-En el equipo **objetivo**, clonar el repositorio y ejecutar, desde su raíz:
+En el equipo **objetivo**, clonar el repositorio y ejecutar, desde su raíz (con un binario compilado, `suitectl` funciona desde cualquier carpeta porque lleva el catálogo incrustado):
 
 ```sh
 go run ./cmd/suitectl doctor
@@ -27,25 +29,27 @@ go run ./cmd/suitectl verify --app localsend
 go run ./cmd/suitectl apply --app localsend --yes
 ```
 
-**Importante:** `apply --app localsend` sin `--yes` comprueba el estado mediante el gestor (solo lectura); si ya está instalada, devuelve éxito, y si falta rechaza la instalación. No instala nada. `--yes` es una autorización explícita para **este** paquete, no para todo el perfil. El gestor puede pedir acuerdos adicionales. No se aceptan automáticamente acuerdos de WinGet, ni se eleva el proceso de forma silenciosa.
+**Importante:** `apply --app localsend` sin `--yes` comprueba el estado mediante el gestor (solo lectura); si ya está instalada, devuelve éxito, y si falta rechaza la instalación. No instala nada. `--yes` es una autorización explícita para **este** paquete, no para todo el perfil. El gestor puede pedir acuerdos adicionales. No se aceptan automáticamente acuerdos de WinGet, ni se eleva el proceso de forma silenciosa. En una terminal, el gestor muestra progreso y sus avisos se responden directamente; sin terminal o con `--non-interactive`, WinGet recibe `--disable-interactivity` y falla en lugar de esperar. Inspección e instalación tienen timeouts (2 y 30 minutos).
 
 ### Windows
 
 - Requiere `winget` instalado y el repositorio de Microsoft `winget` configurado.
 - Consulta `winget list --id LocalSend.LocalSend --exact --source winget --disable-interactivity`.
 - Trata únicamente el HRESULT documentado `0x8A150014` como ausencia. Errores imprevistos detienen el flujo.
-- Instala mediante `winget install --id LocalSend.LocalSend --exact --source winget --no-upgrade --scope user`; no instala actualizaciones deliberadamente. Solicitudes UAC y acuerdos pertenecen al gestor.
+- Instala mediante `winget install --id LocalSend.LocalSend --exact --source winget --no-upgrade --scope user` (más `--disable-interactivity` en modo desatendido); no instala actualizaciones deliberadamente. Solicitudes UAC y acuerdos pertenecen al gestor.
 - Evitar ejecutar pruebas reales con derechos elevados; comprobar que el alcance final es de usuario.
 
 ### Linux
 
 - Requiere Flatpak y un remoto **de usuario** `flathub` configurado con la URL oficial `https://dl.flathub.org/repo/`.
-- Sovereign comprueba el remoto; no ejecuta `remote-add` ni solicita permisos para añadirlo.
+- Sovereign comprueba el remoto; no ejecuta `remote-add` ni solicita permisos para añadirlo. Si falta, muestra el comando oficial: `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo`.
 - Detecta instalación existente mediante `flatpak list --app --columns=application` (alcances user/system).
 - Instala mediante `flatpak install --user --noninteractive flathub org.localsend.localsend_app`, y verifica mediante la misma consulta local.
 - Instalar el runtime requerido puede descargar dependencias de Flathub. No se garantiza reinstalación offline en H2.
 
-## Escenarios de aceptación pendientes en dispositivo real
+## Escenarios de aceptación en dispositivo real
+
+Superados para LocalSend según confirmación del mantenedor (2026-11-11). Para cada nueva aplicación, repetirlos y registrar el resultado en `docs/STATUS.md` antes del merge.
 
 1. Equipo limpio: `verify` falla de forma reconocible sin modificar el equipo.
 2. Sin consentimiento: `apply` no llama al gestor.

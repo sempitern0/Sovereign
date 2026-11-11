@@ -27,6 +27,7 @@ def load(path: Path) -> dict:
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     apps: set[str] = set()
+    manifests: dict[str, dict] = {}
     dependencies: dict[str, list[str]] = {}
     alternatives: dict[str, list[dict]] = {}
     schemas = {}
@@ -59,6 +60,7 @@ def validate(root: Path) -> list[str]:
                         if status != "verified" and "package_id" in config:
                             raise ValueError(f"{platform}: unverified entries cannot advertise package_id")
                     apps.add(obj["id"])
+                    manifests[obj["id"]] = obj
                     dependencies[obj["id"]] = obj.get("depends_on", [])
                 else:
                     alternatives[obj["id"]] = obj.get("alternatives", [])
@@ -114,6 +116,50 @@ def validate(root: Path) -> list[str]:
                         errors.append(f"{path.relative_to(root)}: {platform} alternative default is not a candidate")
         except (ValueError, yaml.YAMLError) as exc:
             errors.append(f"{path.relative_to(root)}: {exc}")
+    errors.extend(validate_allowlist(root, manifests))
+    return errors
+
+
+ALLOW_FIELDS = {"application", "upstream", "platform", "provider", "package_id", "source"}
+IMPLEMENTED_PROVIDERS = {"windows": "winget", "linux": "flatpak"}
+
+
+def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:
+    """Every reviewed installation target must match a verified catalog entry."""
+    path = root / "catalog" / "install-allowlist.yaml"
+    label = "catalog/install-allowlist.yaml"
+    if not path.exists():
+        return [f"{label}: missing"]
+    try:
+        doc = load(path)
+    except (ValueError, yaml.YAMLError) as exc:
+        return [f"{label}: {exc}"]
+    errors: list[str] = []
+    if set(doc) != {"schema_version", "entries"} or doc.get("schema_version") != 1 or not isinstance(doc.get("entries"), list):
+        return [f"{label}: expected schema_version 1 and an entries list only"]
+    seen: set[tuple[str, str]] = set()
+    for index, entry in enumerate(doc["entries"]):
+        where = f"{label}: entry {index}"
+        if not isinstance(entry, dict) or set(entry) != ALLOW_FIELDS or not all(isinstance(entry[k], str) and entry[k] for k in ALLOW_FIELDS):
+            errors.append(f"{where}: requires exactly {sorted(ALLOW_FIELDS)}")
+            continue
+        key = (entry["application"], entry["platform"])
+        if key in seen:
+            errors.append(f"{where}: duplicate {key[0]}/{key[1]}")
+        seen.add(key)
+        if IMPLEMENTED_PROVIDERS.get(entry["platform"]) != entry["provider"]:
+            errors.append(f"{where}: provider {entry['provider']!r} not implemented for {entry['platform']}")
+        app = manifests.get(entry["application"])
+        platform = (app or {}).get("platforms", {}).get(entry["platform"])
+        if app is None or platform is None:
+            errors.append(f"{where}: no catalog entry for {key[0]}/{key[1]}")
+            continue
+        if platform.get("status") != "verified":
+            errors.append(f"{where}: catalog entry is not verified")
+        for field, actual in (("upstream", app.get("upstream")), ("provider", platform.get("provider")),
+                              ("package_id", platform.get("package_id")), ("source", platform.get("source"))):
+            if entry[field] != actual:
+                errors.append(f"{where}: {field} differs from the catalog")
     return errors
 
 
@@ -126,7 +172,7 @@ def main() -> int:
         print("ERROR:", error, file=sys.stderr)
     if errors:
         return 1
-    print("Catalog and profiles validated; no packages are enabled for installation.")
+    print("Catalog, profiles and install allowlist validated; only allowlisted packages can be installed.")
     return 0
 
 

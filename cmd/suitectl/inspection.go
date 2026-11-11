@@ -16,7 +16,7 @@ func inspectPlan(ctx context.Context, c catalog.Catalog, plan planner.Plan, engi
 		if op.Status != "inspection_required" {
 			continue
 		}
-		target, err := install.Resolve(c, op.Application, plan.Platform)
+		target, err := engine.Resolve(c, op.Application, plan.Platform)
 		if err != nil {
 			// This is an H2 capability not implemented for this package.
 			// Retain the H1 status rather than failing the whole profile.
@@ -27,6 +27,7 @@ func inspectPlan(ctx context.Context, c catalog.Catalog, plan planner.Plan, engi
 			op.Status = "inspection_failed"
 			op.Reason = "Local package inspection failed: " + err.Error()
 			op.Action = "none"
+			op.NextStep = "Run for details: suitectl verify --app " + op.Application
 			continue
 		}
 		op.Action = "none"
@@ -35,6 +36,7 @@ func inspectPlan(ctx context.Context, c catalog.Catalog, plan planner.Plan, engi
 			op.Status, op.Reason = "installed", "Already installed on this device"
 		case install.Missing:
 			op.Status, op.Reason = "not_installed", "Package missing; explicit --yes required before installation"
+			op.NextStep = "After reviewing the plan: suitectl apply --app " + op.Application + " --yes"
 		default:
 			op.Status, op.Reason = "inspection_failed", "Package manager returned an unknown state"
 		}
