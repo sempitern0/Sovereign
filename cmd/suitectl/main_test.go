@@ -6,17 +6,51 @@ import (
 	"testing"
 )
 
-func TestH2RejectsUnsupportedAndUnconsentedOperations(t *testing.T) {
-	root := filepath.Join("..", "..")
-	// Never reach a real package manager, even if the app were approved.
-	withProcess(t, &scriptedRunner{respond: func(string, []string) (string, error) { return "", nil }}, false)
-	for _, args := range [][]string{
-		{"apply", "--app", "libreoffice", "--yes", "--root", root},
-		{"verify", "--app", "libreoffice", "--root", root},
-	} {
-		if got := run(args); got == 0 {
-			t.Fatalf("%v unexpectedly succeeded", args)
+// catalogWithPendingApp copies the repository catalog into a temporary root
+// and adds "beta", an application that is not verified nor allowlisted.
+func catalogWithPendingApp(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	for _, dir := range []string{"catalog/apps", "profiles"} {
+		entries, err := os.ReadDir(filepath.Join("..", "..", dir))
+		if err != nil {
+			t.Fatal(err)
 		}
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			data, err := os.ReadFile(filepath.Join("..", "..", dir, entry.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, dir, entry.Name()), data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	beta := "schema_version: 1\nid: beta\nname: Beta\ncategory: media\nlicense: MIT\nupstream: https://example.org/\nplatforms:\n  windows:\n    status: pending\n    provider: winget\n  linux:\n    status: pending\n    provider: flatpak\n"
+	if err := os.WriteFile(filepath.Join(root, "catalog/apps/beta.yaml"), []byte(beta), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func TestH2RejectsUnsupportedAndUnconsentedOperations(t *testing.T) {
+	root := catalogWithPendingApp(t)
+	// Every call must fail before reaching the package manager.
+	runner := &scriptedRunner{respond: func(string, []string) (string, error) { return "", nil }}
+	withProcess(t, runner, false)
+	for _, args := range [][]string{
+		{"apply", "--app", "beta", "--yes", "--root", root},
+		{"verify", "--app", "beta", "--root", root},
+	} {
+		if got := run(args); got != 1 {
+			t.Fatalf("%v returned %d, want 1", args, got)
+		}
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("unapproved app reached the package manager: %v", runner.calls)
 	}
 }
 

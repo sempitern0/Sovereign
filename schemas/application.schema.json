@@ -133,6 +133,15 @@
           ],
           "description": "upstream: installs binaries published by the upstream project; community: built or maintained by a third party."
         },
+        "provider_dependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 2
+          },
+          "description": "Other packages the provider installs because the package manifest declares them."
+        },
         "notes": {
           "type": "string"
         }

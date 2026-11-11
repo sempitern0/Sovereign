@@ -5,6 +5,7 @@ package planner
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/sempitern0/Sovereign/internal/catalog"
 )
@@ -28,8 +29,9 @@ type Operation struct {
 	Verification string `json:"verification,omitempty"`
 	// Scope ("user" or "machine") and Provenance ("upstream" or "community")
 	// come from verified catalog entries so the user sees them before consenting.
-	Scope      string `json:"scope,omitempty"`
-	Provenance string `json:"provenance,omitempty"`
+	Scope                string   `json:"scope,omitempty"`
+	Provenance           string   `json:"provenance,omitempty"`
+	ProviderDependencies []string `json:"provider_dependencies,omitempty"`
 	// NextStep is a short, human instruction for resolving a blocked or
 	// actionable state. It never implies that Sovereign will act on its own.
 	NextStep string `json:"next_step,omitempty"`
@@ -139,13 +141,13 @@ func Build(c catalog.Catalog, profileID string, device Device) (Plan, error) {
 		case !device.Providers[entry.Provider]:
 			op.Status, op.Reason = "provider_unavailable", fmt.Sprintf("Package manager %s not found on this device", entry.Provider)
 			op.Provider, op.PackageID = entry.Provider, entry.PackageID
-			op.Scope, op.Provenance = entry.Scope, entry.Provenance
+			op.Scope, op.Provenance, op.ProviderDependencies = entry.Scope, entry.Provenance, entry.ProviderDependencies
 			op.NextStep = ProviderSetupHint(entry.Provider)
 		default:
 			op.Status, op.Reason = "inspection_required", "Package verified; installed state is not yet inspected (H2)"
 			op.Action, op.Provider, op.PackageID = "inspect", entry.Provider, entry.PackageID
 			op.Verification = entry.VerifiedAt
-			op.Scope, op.Provenance = entry.Scope, entry.Provenance
+			op.Scope, op.Provenance, op.ProviderDependencies = entry.Scope, entry.Provenance, entry.ProviderDependencies
 		}
 		plan.Operations = append(plan.Operations, op)
 	}
@@ -161,7 +163,48 @@ func (op Operation) Notices() []string {
 	if op.Provenance == "community" {
 		notices = append(notices, "community-built package, not endorsed by the upstream project")
 	}
+	if len(op.ProviderDependencies) > 0 {
+		notices = append(notices, DependencyNotice(op.Provider, op.ProviderDependencies))
+	}
 	return notices
+}
+
+// archSuffix maps Go architectures to the suffixes used by WinGet dependency IDs.
+var archSuffix = map[string]string{"amd64": ".x64", "386": ".x86", "arm64": ".arm64"}
+
+// DependenciesForArch keeps only the dependencies for one architecture when the
+// IDs are architecture-specific; otherwise it returns the list unchanged.
+func DependenciesForArch(deps []string, goarch string) []string {
+	suffix, ok := archSuffix[goarch]
+	if !ok {
+		return deps
+	}
+	var kept []string
+	for _, dep := range deps {
+		if strings.HasSuffix(dep, suffix) {
+			kept = append(kept, dep)
+		}
+	}
+	if len(kept) == 0 {
+		return deps
+	}
+	return kept
+}
+
+// LocalizeDependencies narrows every operation's dependencies to the host
+// architecture. Use it only for plans of the current device.
+func LocalizeDependencies(plan Plan, goarch string) Plan {
+	for i := range plan.Operations {
+		if deps := plan.Operations[i].ProviderDependencies; len(deps) > 0 {
+			plan.Operations[i].ProviderDependencies = DependenciesForArch(deps, goarch)
+		}
+	}
+	return plan
+}
+
+// DependencyNotice tells the user which extra packages the provider may install.
+func DependencyNotice(provider string, deps []string) string {
+	return fmt.Sprintf("%s may also install declared dependencies if missing: %s", provider, strings.Join(deps, ", "))
 }
 
 // ProviderSetupHint explains how a user can make a provider available. Sovereign

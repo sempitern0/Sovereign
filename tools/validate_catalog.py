@@ -61,8 +61,10 @@ def validate(root: Path) -> list[str]:
                                 raise ValueError(f"{platform}: machine scope is only supported on windows")
                             if dt.date.fromisoformat(config["verified_at"]) > dt.date.today():
                                 raise ValueError(f"{platform}: verified_at is in the future")
-                        if status != "verified" and any(k in config for k in ("package_id", "scope", "provenance")):
-                            raise ValueError(f"{platform}: unverified entries cannot advertise package_id, scope or provenance")
+                        if status != "verified" and any(k in config for k in ("package_id", "scope", "provenance", "provider_dependencies")):
+                            raise ValueError(f"{platform}: unverified entries cannot advertise package_id, scope, provenance or provider_dependencies")
+                        if config.get("package_id") in config.get("provider_dependencies", []):
+                            raise ValueError(f"{platform}: a package cannot depend on itself")
                     apps.add(obj["id"])
                     manifests[obj["id"]] = obj
                     dependencies[obj["id"]] = obj.get("depends_on", [])
@@ -125,6 +127,7 @@ def validate(root: Path) -> list[str]:
 
 
 ALLOW_FIELDS = {"application", "upstream", "platform", "provider", "package_id", "source", "scope", "provenance"}
+OPTIONAL_ALLOW_FIELDS = {"provider_dependencies"}
 IMPLEMENTED_PROVIDERS = {"windows": "winget", "linux": "flatpak"}
 ALLOWED_SCOPES = {"winget": ("user", "machine"), "flatpak": ("user",)}
 
@@ -145,8 +148,10 @@ def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:
     seen: set[tuple[str, str]] = set()
     for index, entry in enumerate(doc["entries"]):
         where = f"{label}: entry {index}"
-        if not isinstance(entry, dict) or set(entry) != ALLOW_FIELDS or not all(isinstance(entry[k], str) and entry[k] for k in ALLOW_FIELDS):
-            errors.append(f"{where}: requires exactly {sorted(ALLOW_FIELDS)}")
+        if (not isinstance(entry, dict) or not ALLOW_FIELDS <= set(entry) <= ALLOW_FIELDS | OPTIONAL_ALLOW_FIELDS
+                or not all(isinstance(entry[k], str) and entry[k] for k in ALLOW_FIELDS)
+                or not isinstance(entry.get("provider_dependencies", []), list)):
+            errors.append(f"{where}: requires {sorted(ALLOW_FIELDS)} and optionally provider_dependencies (list)")
             continue
         key = (entry["application"], entry["platform"])
         if key in seen:
@@ -165,8 +170,9 @@ def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:
             errors.append(f"{where}: catalog entry is not verified")
         for field, actual in (("upstream", app.get("upstream")), ("provider", platform.get("provider")),
                               ("package_id", platform.get("package_id")), ("source", platform.get("source")),
-                              ("scope", platform.get("scope")), ("provenance", platform.get("provenance"))):
-            if entry[field] != actual:
+                              ("scope", platform.get("scope")), ("provenance", platform.get("provenance")),
+                              ("provider_dependencies", platform.get("provider_dependencies", []))):
+            if entry.get(field, [] if field == "provider_dependencies" else None) != actual:
                 errors.append(f"{where}: {field} differs from the catalog")
     return errors
 

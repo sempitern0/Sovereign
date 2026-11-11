@@ -9,11 +9,37 @@ capabilities:
   - offline_documents
 platforms:
   windows:
-    status: pending
+    status: verified
     provider: winget
+    package_id: TheDocumentFoundation.LibreOffice
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/t/TheDocumentFoundation/LibreOffice/26.8.2.2/TheDocumentFoundation.LibreOffice.installer.yaml
+    verified_at: "2026-11-11"
+    scope: machine
+    provenance: upstream
+    provider_dependencies:
+      - Microsoft.VCRedist.2015+.x64
+      - Microsoft.VCRedist.2015+.x86
+      - Microsoft.VCRedist.2015+.arm64
+    notes: >-
+      WinGet community manifest 26.8.2.2, publisher The Document Foundation. MSI
+      installers from download.documentfoundation.org with pinned SHA-256, machine
+      scope only, so Windows asks for administrator approval. Each architecture
+      declares the Microsoft Visual C++ Redistributable for its own architecture
+      (only one is installed, if missing). Decision recorded in ADR-0006.
   linux:
-    status: pending
+    status: verified
     provider: flatpak
+    package_id: org.libreoffice.LibreOffice
+    source: https://flathub.org/apps/org.libreoffice.LibreOffice
+    verified_at: "2026-11-11"
+    scope: user
+    provenance: upstream
+    notes: >-
+      Flathub lists The Document Foundation as developer, without a verified badge
+      and without a community notice. The manifest (github.com/flathub/org.libreoffice.LibreOffice)
+      is maintained by LibreOffice developers and builds the official
+      gerrit.libreoffice.org tag libreoffice-26.8.2.2. Runtime org.freedesktop.Platform;
+      large first download.
   android:
     status: unsupported
     provider: none

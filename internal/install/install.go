@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -90,6 +91,8 @@ type Target struct {
 	PackageID  string
 	Scope      string
 	Provenance string
+	// ProviderDependencies are installed by the package manager itself.
+	ProviderDependencies []string
 }
 
 // NeedsAdminApproval reports whether installing triggers an OS elevation prompt.
@@ -123,10 +126,11 @@ func (e Engine) Resolve(c catalog.Catalog, appID, platform string) (Target, erro
 		return Target{}, fmt.Errorf("application %q is not approved for H2 on %s", appID, platform)
 	}
 	if app.Upstream != entry.Upstream || spec.Provider != entry.Provider || spec.PackageID != entry.PackageID || spec.Source != entry.Source ||
-		spec.Scope != entry.Scope || spec.Provenance != entry.Provenance {
-		return Target{}, fmt.Errorf("%s package identity, source, scope or provenance differs from the reviewed allowlist", entry.Provider)
+		spec.Scope != entry.Scope || spec.Provenance != entry.Provenance || !slices.Equal(spec.ProviderDependencies, entry.ProviderDependencies) {
+		return Target{}, fmt.Errorf("%s package identity, source, scope, provenance or dependencies differ from the reviewed allowlist", entry.Provider)
 	}
-	return Target{AppID: appID, Provider: entry.Provider, PackageID: entry.PackageID, Scope: entry.Scope, Provenance: entry.Provenance}, nil
+	return Target{AppID: appID, Provider: entry.Provider, PackageID: entry.PackageID, Scope: entry.Scope, Provenance: entry.Provenance,
+		ProviderDependencies: entry.ProviderDependencies}, nil
 }
 
 // providerPlatform pins each implemented provider to its only supported OS.

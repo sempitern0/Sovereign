@@ -2,6 +2,7 @@
 
 ## Unreleased — H3
 
+- H3-2: verify and allowlist LibreOffice (WinGet `TheDocumentFoundation.LibreOffice`, machine scope, declared Microsoft Visual C++ Redistributable dependency; Flathub `org.libreoffice.LibreOffice`, upstream-maintained). New optional `provider_dependencies`, matched between catalog and allowlist and shown before consent, narrowed to the device architecture. Tests needing an unapproved app now use a fictional pending one.
 - H3-1: verify and allowlist VLC (WinGet `VideoLAN.VLC` in machine scope; Flathub `org.videolan.VLC`, community build). Add required `scope` and `provenance` to verified catalog and allowlist entries; machine scope only from an attended terminal; plan and consent refusal show administrator and community notices (ADR-0006).
 
 ## H0 + H1 + H2 LocalSend
