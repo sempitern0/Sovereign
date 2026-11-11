@@ -38,10 +38,10 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 
 ## Adding or verifying an application
 1. Confirm the official upstream, license and, per platform, the exact package ID and source in the official channel (WinGet community manifest, Flathub page). Record the source URL and `verified_at` date. Never guess IDs. If a page is not reachable, read the channel's manifest repository with git (`microsoft/winget-pkgs` sparse checkout, `flathub/<app-id>`).
-2. From the manifest, record `scope` (WinGet installers' `Scope`; Flatpak is always `user`) and `provenance` (`upstream` if the channel installs the project's own binaries, `community` if a third party builds it; Flathub's "unverified/community" notice counts). A machine-only or community package needs the maintainer's explicit decision.
+2. From the manifest, record `scope` (WinGet installers' `Scope`; Flatpak is always `user`) and `provenance` (`upstream` if the channel installs the project's own binaries, `community` if a third party builds it; Flathub's "unverified/community" notice counts). Also record WinGet `PackageDependencies` in `provider_dependencies`. A machine-only package, a community package or one with provider dependencies needs the maintainer's explicit decision.
 3. Set the platform entry to `verified` in `catalog/apps/<id>.yaml` with those fields and evidence in `notes`; leave other platforms `pending`/`unsupported`.
-4. Add matching entries to `catalog/install-allowlist.yaml` (application, upstream, platform, provider, package_id, source, scope, provenance).
-5. Run the quality checks; Go and Python CI fail if allowlist and catalog differ. Make sure no test uses an approved app with a real runner (use `withProcess` in CLI tests).
+4. Add matching entries to `catalog/install-allowlist.yaml` (application, upstream, platform, provider, package_id, source, scope, provenance and, if any, provider_dependencies).
+5. Run the quality checks; Go and Python CI fail if allowlist and catalog differ. Make sure no test uses an approved app with a real runner (use `withProcess` in CLI tests); tests that need an unapproved app create a fictional pending one (`catalogWithPendingApp`).
 6. Add simulated-provider tests only if behaviour differs from existing providers.
 7. Acceptance on real devices (follow the scenarios in `docs/H2_LOCALSEND.md`): clean install, `verify`, second `apply` unchanged, missing source, cancelled prompt, network loss. Record the result in STATUS before merge.
 

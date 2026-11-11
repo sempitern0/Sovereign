@@ -17,9 +17,11 @@ Status: accepted (2026-11-11), decided by the maintainer during H3-1 (VLC). Refi
 2. Both fields are part of the field-by-field match between catalog and allowlist (Go and Python CI).
 3. Machine scope is **never silent**: the plan and the consent refusal state that Windows will ask for administrator approval, and `apply` installs a machine-scope package only from an attended interactive terminal. Unattended or `--non-interactive` runs fail before calling the package manager. The administrator prompt itself belongs to Windows; Sovereign does not elevate.
 4. Community provenance is shown in the plan and on consent refusal ("community-built package, not endorsed by the upstream project"). It is accepted per application by the maintainer and recorded in the catalog notes.
+5. **Declared provider dependencies** (added in H3-2, LibreOffice). When a package manifest declares other packages that the provider installs on its own (WinGet `PackageDependencies`), the entry lists them in `provider_dependencies`, matched field by field between catalog and allowlist. The plan and consent refusal show them, narrowed to the device's architecture when planning for the current device. Sovereign does not install them separately and does not pass `--skip-dependencies`. Accepting them is a per-app maintainer decision, like machine scope.
 
 ## Consequences
 
 - VLC is allowlisted on Windows (machine scope, upstream binaries) and Linux (user scope, community build). Real-device acceptance is still required before merge.
+- LibreOffice is allowlisted on Windows (machine scope, upstream MSI, declared Microsoft Visual C++ Redistributable dependency) and Linux (user scope, Flathub build maintained by LibreOffice developers from the official tag, `upstream`).
 - The invariant "user scope only" becomes "user scope unless the allowlist entry declares machine scope, which requires an attended terminal and the OS's own approval".
 - Future apps must record both fields from evidence; unknown means not verified.

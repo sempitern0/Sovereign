@@ -159,6 +159,9 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
+		if *platform == runtime.GOOS {
+			plan = planner.LocalizeDependencies(plan, runtime.GOARCH)
+		}
 		if !*noInspect && *platform == runtime.GOOS {
 			engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS}
 			plan = inspectPlan(context.Background(), c, plan, engine)
@@ -237,6 +240,10 @@ func run(args []string) int {
 			}
 			if target.Provenance == "community" {
 				fmt.Fprintln(os.Stderr, "Note: community-built package, not endorsed by the upstream project.")
+			}
+			if len(target.ProviderDependencies) > 0 {
+				deps := planner.DependenciesForArch(target.ProviderDependencies, runtime.GOARCH)
+				fmt.Fprintln(os.Stderr, "Note: "+planner.DependencyNotice(target.Provider, deps)+".")
 			}
 			return 3
 		}

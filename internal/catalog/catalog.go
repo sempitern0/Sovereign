@@ -38,7 +38,11 @@ type Platform struct {
 	// channel installs binaries published by the upstream project, "community"
 	// when a third party builds or maintains the package from upstream sources.
 	Provenance string `yaml:"provenance,omitempty" json:"provenance,omitempty"`
-	Notes      string `yaml:"notes,omitempty" json:"notes,omitempty"`
+	// ProviderDependencies are other packages the provider installs on its own
+	// because the package manifest declares them (e.g. a runtime library). They
+	// are listed so the user sees them before consenting.
+	ProviderDependencies []string `yaml:"provider_dependencies,omitempty" json:"provider_dependencies,omitempty"`
+	Notes                string   `yaml:"notes,omitempty" json:"notes,omitempty"`
 }
 
 var scopes = []string{"user", "machine"}
@@ -224,8 +228,15 @@ func validateApp(a Application, filename string) error {
 		if entry.Status == "unsupported" && entry.Provider != "none" {
 			return fmt.Errorf("%s: unsupported requires provider none", a.ID)
 		}
-		if entry.Status != "verified" && (entry.PackageID != "" || entry.Scope != "" || entry.Provenance != "") {
-			return fmt.Errorf("%s: unverified entries cannot advertise a package ID, scope or provenance", a.ID)
+		if entry.Status != "verified" && (entry.PackageID != "" || entry.Scope != "" || entry.Provenance != "" || len(entry.ProviderDependencies) > 0) {
+			return fmt.Errorf("%s: unverified entries cannot advertise a package ID, scope, provenance or dependencies", a.ID)
+		}
+		seenDeps := map[string]bool{}
+		for _, dep := range entry.ProviderDependencies {
+			if !packageIdentifier.MatchString(dep) || seenDeps[dep] || dep == entry.PackageID {
+				return fmt.Errorf("%s: invalid or duplicate provider dependency %q", a.ID, dep)
+			}
+			seenDeps[dep] = true
 		}
 		if entry.Status == "verified" {
 			if entry.Provider == "none" || !packageIdentifier.MatchString(entry.PackageID) || !httpsURL(entry.Source) || entry.VerifiedAt == "" {

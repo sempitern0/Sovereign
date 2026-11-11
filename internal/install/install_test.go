@@ -71,7 +71,7 @@ func TestResolvePinnedSourcesAndPlatforms(t *testing.T) {
 	if _, err := (Engine{}).Resolve(c, "localsend", "linux"); err == nil {
 		t.Fatal("source substitution allowed")
 	}
-	if _, err := (Engine{}).Resolve(reviewedCatalog(), "libreoffice", "linux"); err == nil {
+	if _, err := (Engine{}).Resolve(reviewedCatalog(), "beta", "linux"); err == nil {
 		t.Fatal("other app allowed")
 	}
 }
@@ -374,5 +374,28 @@ func TestEmbeddedVLCLinuxIsCommunityUserScope(t *testing.T) {
 	target, err := (Engine{}).Resolve(c, "vlc", "linux")
 	if err != nil || target.Scope != "user" || target.Provenance != "community" || target.PackageID != "org.videolan.VLC" {
 		t.Fatalf("target %+v err %v", target, err)
+	}
+}
+
+func TestLibreOfficeWindowsDeclaresDependencies(t *testing.T) {
+	c, err := catalog.LoadFS(sovereign.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := (Engine{}).Resolve(c, "libreoffice", "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !target.NeedsAdminApproval() || len(target.ProviderDependencies) != 3 {
+		t.Fatalf("unexpected target %+v", target)
+	}
+	// Dependency drift between catalog and allowlist is refused.
+	app := c.Apps["libreoffice"]
+	entry := app.Platforms["windows"]
+	entry.ProviderDependencies = entry.ProviderDependencies[:1]
+	app.Platforms["windows"] = entry
+	c.Apps["libreoffice"] = app
+	if _, err := (Engine{}).Resolve(c, "libreoffice", "windows"); err == nil {
+		t.Fatal("dependency drift accepted")
 	}
 }

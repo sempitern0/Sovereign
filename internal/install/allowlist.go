@@ -21,6 +21,9 @@ type AllowEntry struct {
 	Source      string `yaml:"source"`
 	Scope       string `yaml:"scope"`
 	Provenance  string `yaml:"provenance"`
+	// ProviderDependencies must equal the catalog's list: packages the provider
+	// installs on its own because the manifest declares them.
+	ProviderDependencies []string `yaml:"provider_dependencies,omitempty"`
 }
 
 // providerScopes lists the install scopes each implemented provider supports.
@@ -73,6 +76,13 @@ func ParseAllowlist(data []byte) (Allowlist, error) {
 		}
 		if entry.Provenance != "upstream" && entry.Provenance != "community" {
 			return Allowlist{}, fmt.Errorf("install allowlist: entry %d: provenance must be upstream or community", i)
+		}
+		seenDeps := map[string]bool{}
+		for _, dep := range entry.ProviderDependencies {
+			if dep == "" || dep == entry.PackageID || seenDeps[dep] {
+				return Allowlist{}, fmt.Errorf("install allowlist: entry %d: invalid or duplicate provider dependency %q", i, dep)
+			}
+			seenDeps[dep] = true
 		}
 		key := entry.Application + "/" + entry.Platform
 		if seen[key] {

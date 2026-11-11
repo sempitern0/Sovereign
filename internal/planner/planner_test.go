@@ -125,12 +125,29 @@ func TestProviderUnavailableExplainsNextStep(t *testing.T) {
 }
 
 func TestNoticesWarnBeforeConsent(t *testing.T) {
-	op := Operation{Scope: "machine", Provenance: "community"}
+	op := Operation{Provider: "winget", Scope: "machine", Provenance: "community", ProviderDependencies: []string{"Microsoft.VCRedist.2015+.x64"}}
 	notices := op.Notices()
-	if len(notices) != 2 || !strings.Contains(notices[0], "administrator") || !strings.Contains(notices[1], "community") {
+	if len(notices) != 3 || !strings.Contains(notices[0], "administrator") || !strings.Contains(notices[1], "community") ||
+		!strings.Contains(notices[2], "winget may also install declared dependencies if missing: Microsoft.VCRedist.2015+.x64") {
 		t.Fatalf("notices %v", notices)
 	}
 	if got := (Operation{Scope: "user", Provenance: "upstream"}).Notices(); len(got) != 0 {
 		t.Fatalf("unexpected notices %v", got)
+	}
+}
+
+func TestDependenciesForArch(t *testing.T) {
+	deps := []string{"Microsoft.VCRedist.2015+.x64", "Microsoft.VCRedist.2015+.x86", "Microsoft.VCRedist.2015+.arm64"}
+	for goarch, want := range map[string]string{"amd64": ".x64", "386": ".x86", "arm64": ".arm64"} {
+		got := DependenciesForArch(deps, goarch)
+		if len(got) != 1 || !strings.HasSuffix(got[0], want) {
+			t.Fatalf("%s: %v", goarch, got)
+		}
+	}
+	if got := DependenciesForArch(deps, "riscv64"); len(got) != 3 {
+		t.Fatalf("unknown arch must keep all: %v", got)
+	}
+	if got := DependenciesForArch([]string{"Some.Runtime"}, "amd64"); len(got) != 1 {
+		t.Fatalf("arch-neutral IDs must be kept: %v", got)
 	}
 }

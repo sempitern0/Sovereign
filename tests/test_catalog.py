@@ -38,19 +38,27 @@ class CatalogTests(unittest.TestCase):
         path.write_text(path.read_text().replace("    scope: user\n    provenance: community", "    scope: machine\n    provenance: community", 1))
         self.assertTrue(any("machine scope is only supported on windows" in e for e in validate(self.root)))
 
+    def test_allowlist_dependencies_must_match_catalog(self):
+        path = self.root / "catalog/install-allowlist.yaml"
+        path.write_text(path.read_text().replace("      - Microsoft.VCRedist.2015+.arm64\n", "", 1))
+        self.assertTrue(any("provider_dependencies differs" in e for e in validate(self.root)))
+
     def test_allowlist_scope_must_match_catalog(self):
         path = self.root / "catalog/install-allowlist.yaml"
         path.write_text(path.read_text().replace("    scope: machine\n", "    scope: user\n", 1))
         self.assertTrue(any("scope differs" in e for e in validate(self.root)))
 
     def test_allowlist_rejects_unverified_entry(self):
+        (self.root / "catalog/apps/beta.yaml").write_text(
+            "schema_version: 1\nid: beta\nname: Beta\ncategory: media\nlicense: MIT\n"
+            "upstream: https://example.org/\nplatforms:\n  linux:\n    status: pending\n    provider: flatpak\n")
         path = self.root / "catalog/install-allowlist.yaml"
-        path.write_text(path.read_text() + """  - application: libreoffice
-    upstream: https://www.libreoffice.org/
+        path.write_text(path.read_text() + """  - application: beta
+    upstream: https://example.org/
     platform: linux
     provider: flatpak
-    package_id: org.libreoffice.LibreOffice
-    source: https://flathub.org/apps/org.libreoffice.LibreOffice
+    package_id: org.example.Beta
+    source: https://flathub.org/apps/org.example.Beta
     scope: user
     provenance: upstream
 """)
