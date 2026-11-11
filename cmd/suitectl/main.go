@@ -16,6 +16,7 @@ import (
 	"github.com/sempitern0/Sovereign/internal/diagnostics"
 	"github.com/sempitern0/Sovereign/internal/install"
 	"github.com/sempitern0/Sovereign/internal/planner"
+	"github.com/sempitern0/Sovereign/internal/state"
 )
 
 const version = "0.3.0-dev"
@@ -23,8 +24,13 @@ const version = "0.3.0-dev"
 // Process boundaries, replaceable in tests so no test run reaches a real
 // package manager or depends on the terminal it was started from.
 var (
-	newRunner  = func() install.Runner { return install.ExecRunner{} }
-	isTerminal = install.IsTerminal
+	newRunner       = func() install.Runner { return install.ExecRunner{} }
+	isTerminal      = install.IsTerminal
+	detectProviders = func() map[string]bool { return diagnostics.Detect().Providers }
+	newStore        = func() (state.Store, error) {
+		dir, err := state.DefaultDir()
+		return state.Store{Dir: dir}, err
+	}
 )
 
 func main() { os.Exit(run(os.Args[1:])) }
@@ -153,7 +159,7 @@ func run(args []string) int {
 		}
 		available := map[string]bool{}
 		if *platform == runtime.GOOS {
-			available = diagnostics.Detect().Providers
+			available = detectProviders()
 		}
 		plan, err := planner.Build(c, *profile, planner.Device{Platform: *platform, Providers: available})
 		if err != nil {
@@ -169,30 +175,28 @@ func run(args []string) int {
 		if *machine {
 			return printJSON(plan)
 		}
-		fmt.Printf("Read-only plan: profile=%s platform=%s\n", plan.Profile, plan.Platform)
-		for _, op := range plan.Operations {
-			fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
-			for _, notice := range op.Notices() {
-				fmt.Printf("  %-16s %-22s !  %s\n", "", "", notice)
-			}
-			if op.NextStep != "" {
-				fmt.Printf("  %-16s %-22s -> %s\n", "", "", op.NextStep)
-			}
-		}
+		printPlan(plan, "Read-only plan")
 		return 0
 	case "apply", "verify":
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
 		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
-		app := fs.String("app", "", "Single application ID (H2: localsend only)")
+		app := fs.String("app", "", "Single allowlisted application ID")
+		profile := fs.String("profile", "", "apply only: install every required, missing application of this profile")
 		yes := fs.Bool("yes", false, "Explicitly authorize installation")
 		machine := fs.Bool("json", false, "Machine-readable verification result")
 		nonInteractive := fs.Bool("non-interactive", false, "Never attach the package manager to the terminal; WinGet prompts are disabled")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
-		if fs.NArg() != 0 || *app == "" {
-			return usageError(args[0] + " requires --app and no positional arguments")
+		if fs.NArg() != 0 {
+			return usageError(args[0] + " takes no positional arguments")
+		}
+		if args[0] == "verify" && (*app == "" || *profile != "") {
+			return usageError("verify requires --app")
+		}
+		if args[0] == "apply" && (*app == "") == (*profile == "") {
+			return usageError("apply requires exactly one of --app or --profile")
 		}
 		if args[0] == "verify" && *yes {
 			return usageError("--yes applies only to apply")
@@ -208,6 +212,9 @@ func run(args []string) int {
 			return loadError(err)
 		}
 		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
+		if *profile != "" {
+			return applyProfile(c, *profile, *yes, engine)
+		}
 		target, err := engine.Resolve(c, *app, runtime.GOOS)
 		if err != nil {
 			return loadError(err)
@@ -232,7 +239,27 @@ func run(args []string) int {
 			}
 			return 0
 		}
+		var release func()
+		if *yes {
+			store, err := newStore()
+			if err == nil {
+				release, err = store.Lock()
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Not installed:", err)
+				return 1
+			}
+			defer release()
+		}
 		result, err := engine.Apply(context.Background(), target, *yes)
+		switch {
+		case err == nil && result.Changed:
+			recordJournal([]state.Entry{journalEntry(target, state.ResultInstalled, true, "")})
+		case err == nil:
+			recordJournal([]state.Entry{journalEntry(target, state.ResultAlreadyInstalled, false, "")})
+		case !errors.Is(err, install.ErrConsentRequired):
+			recordJournal([]state.Entry{journalEntry(target, state.ResultFailed, result.Changed, install.ErrorClass(err))})
+		}
 		if errors.Is(err, install.ErrConsentRequired) {
 			fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
 			if target.NeedsAdminApproval() {
@@ -270,6 +297,20 @@ func run(args []string) int {
 
 // loadCatalog uses the catalog compiled into the binary unless a development
 // checkout is given explicitly with --root.
+// printPlan prints plan entries with their notices and next steps.
+func printPlan(plan planner.Plan, title string) {
+	fmt.Printf("%s: profile=%s platform=%s\n", title, plan.Profile, plan.Platform)
+	for _, op := range plan.Operations {
+		fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
+		for _, notice := range op.Notices() {
+			fmt.Printf("  %-16s %-22s !  %s\n", "", "", notice)
+		}
+		if op.NextStep != "" {
+			fmt.Printf("  %-16s %-22s -> %s\n", "", "", op.NextStep)
+		}
+	}
+}
+
 func loadCatalog(root string) (catalog.Catalog, error) {
 	if root == "" {
 		return catalog.LoadFS(sovereign.Files)
@@ -313,6 +354,7 @@ func usage() {
 	fmt.Println("       suitectl profiles list [--json]")
 	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect]")
 	fmt.Println("       suitectl verify --app localsend [--json]")
-	fmt.Println("       suitectl apply --app localsend --yes [--non-interactive] (consent required)")
+	fmt.Println("       suitectl apply --app <id> --yes [--non-interactive] (consent required)")
+	fmt.Println("       suitectl apply --profile essential --yes [--non-interactive] (one consent for the shown plan)")
 	fmt.Println("The catalog is embedded; --root <checkout> reads a development copy instead.")
 }

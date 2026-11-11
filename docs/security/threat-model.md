@@ -11,6 +11,8 @@ Assets: personal documents, credentials, OS package state, installer provenance 
 | Unexpected elevation | Machine scope only when the allowlist declares it; announced in the plan; attended terminal required; Windows shows its own UAC prompt |
 | Hidden extra packages | WinGet-declared dependencies listed in `provider_dependencies`, matched in CI and shown before consent |
 | Community-built package | `provenance: community` recorded from the channel manifest, shown before consent and accepted per app by the maintainer |
+| Personal data in local state | Journal stores error classes, never raw provider output or paths; per-user directory, 0600 |
+| Concurrent or interrupted runs | Exclusive apply lock with dead-process detection; atomic journal writes; corrupt journal moved aside |
 | Invisible prompt or hung installer | Interactive only on a real terminal; otherwise prompts disabled; timeouts on every provider call |
 | Command injection | Pass structured arguments to trusted package manager executables |
 | Unintended elevation | Show plan and explicitly request per-operation consent |

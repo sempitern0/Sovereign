@@ -48,6 +48,16 @@ var ErrFlathubRemoteMissing = errors.New("official user Flathub remote missing; 
 // an administrator prompt nobody is attending.
 var ErrAdminApprovalNeedsTerminal = errors.New("this package installs for all users and Windows will ask for administrator approval; run apply from an interactive terminal")
 
+// ErrNotDetectedAfterInstall means the package manager reported success but the
+// package is not visible afterwards.
+var ErrNotDetectedAfterInstall = errors.New("package manager returned success but package was not detected")
+
+// ErrInstallFailed wraps a failed package-manager install command.
+var ErrInstallFailed = errors.New("installation failed")
+
+// ErrVerifyAfterInstall wraps an inspection failure right after installing.
+var ErrVerifyAfterInstall = errors.New("installed but verification failed")
+
 // FlathubRemoteCommand is shown to the user; Sovereign never runs it itself.
 const FlathubRemoteCommand = "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
 
@@ -251,15 +261,15 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 		return result, ErrAdminApprovalNeedsTerminal
 	}
 	if err := e.install(ctx, program, args); err != nil {
-		return result, fmt.Errorf("%s installation failed: %w", providerName(t.Provider), err)
+		return result, fmt.Errorf("%s %w: %w", providerName(t.Provider), ErrInstallFailed, err)
 	}
 	result.Changed = true
 	after, err := e.Status(ctx, t)
 	if err != nil {
-		return result, fmt.Errorf("installed but verification failed: %w", err)
+		return result, fmt.Errorf("%w: %w", ErrVerifyAfterInstall, err)
 	}
 	if after != Installed {
-		return result, errors.New("package manager returned success but package was not detected")
+		return result, ErrNotDetectedAfterInstall
 	}
 	result.State, result.Detail = Installed, "Installed and verified"
 	return result, nil
@@ -294,6 +304,31 @@ func (e Engine) install(ctx context.Context, program string, args []string) erro
 	}
 	_, err := e.Runner.Run(ctx, program, args...)
 	return err
+}
+
+// ErrorClass maps an installation error to a short, stable label that is safe to
+// persist: it never contains package-manager output, paths or user names.
+func ErrorClass(err error) string {
+	switch {
+	case err == nil:
+		return ""
+	case errors.Is(err, ErrConsentRequired):
+		return "consent_required"
+	case errors.Is(err, ErrAdminApprovalNeedsTerminal):
+		return "admin_terminal_required"
+	case errors.Is(err, ErrFlathubRemoteMissing):
+		return "flathub_remote_missing"
+	case errors.Is(err, exec.ErrNotFound):
+		return "provider_not_found"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timeout"
+	case errors.Is(err, ErrVerifyAfterInstall), errors.Is(err, ErrNotDetectedAfterInstall):
+		return "verification_failed"
+	case errors.Is(err, ErrInstallFailed):
+		return "install_failed"
+	default:
+		return "inspection_failed"
+	}
 }
 
 // attended reports whether installation output and prompts reach a person.
