@@ -53,12 +53,12 @@ func reviewedCatalog() catalog.Catalog {
 
 func TestResolvePinnedSourcesAndPlatforms(t *testing.T) {
 	for _, platform := range []string{"linux", "windows"} {
-		if _, err := Resolve(reviewedCatalog(), "localsend", platform); err != nil {
+		if _, err := (Engine{}).Resolve(reviewedCatalog(), "localsend", platform); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, platform := range []string{"android", "darwin"} {
-		if _, err := Resolve(reviewedCatalog(), "localsend", platform); err == nil {
+		if _, err := (Engine{}).Resolve(reviewedCatalog(), "localsend", platform); err == nil {
 			t.Fatal("unreviewed platform allowed")
 		}
 	}
@@ -68,10 +68,10 @@ func TestResolvePinnedSourcesAndPlatforms(t *testing.T) {
 	entry.Source = "https://evil.example/mirror"
 	a.Platforms["linux"] = entry
 	c.Apps["localsend"] = a
-	if _, err := Resolve(c, "localsend", "linux"); err == nil {
+	if _, err := (Engine{}).Resolve(c, "localsend", "linux"); err == nil {
 		t.Fatal("source substitution allowed")
 	}
-	if _, err := Resolve(reviewedCatalog(), "vlc", "linux"); err == nil {
+	if _, err := (Engine{}).Resolve(reviewedCatalog(), "vlc", "linux"); err == nil {
 		t.Fatal("other app allowed")
 	}
 }
@@ -81,7 +81,7 @@ func TestApplyFailClosedWithoutConsent(t *testing.T) {
 		t.Skip("Linux only test")
 	}
 	c := reviewedCatalog()
-	target, _ := Resolve(c, "localsend", "linux")
+	target, _ := (Engine{}).Resolve(c, "localsend", "linux")
 	f := &fakeRunner{output: []string{""}}
 	e := Engine{Runner: f, Platform: runtime.GOOS}
 	_, err := e.Apply(context.Background(), target, false)
@@ -97,7 +97,7 @@ func TestApplyIdempotent(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux only test")
 	}
-	target, _ := Resolve(reviewedCatalog(), "localsend", "linux")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{"org.localsend.localsend_app\n"}}
 	result, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, false)
 	if err != nil || result.Changed || result.State != Installed || len(f.calls) != 1 {
@@ -109,7 +109,7 @@ func TestApplyVerifiesAfterInstall(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux only test")
 	}
-	target, _ := Resolve(reviewedCatalog(), "localsend", "linux")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{"", "flathub\thttps://dl.flathub.org/repo/\n", "", "org.localsend.localsend_app\n"}}
 	result, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, true)
 	if err != nil || !result.Changed || result.State != Installed {
@@ -124,7 +124,7 @@ func TestRejectUntrustedRemote(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux only test")
 	}
-	target, _ := Resolve(reviewedCatalog(), "localsend", "linux")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{"", "flathub\thttps://untrusted.example/repo\n"}}
 	_, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, true)
 	if !errors.Is(err, ErrFlathubRemoteMissing) || len(f.calls) != 2 {
@@ -136,7 +136,7 @@ func TestFailedAndPartialInstall(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux only test")
 	}
-	target, _ := Resolve(reviewedCatalog(), "localsend", "linux")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{"", "flathub https://dl.flathub.org/repo/", ""}, errors: []error{nil, nil, errors.New("network down")}}
 	_, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, true)
 	if err == nil || !strings.Contains(err.Error(), "installation failed") {
@@ -153,7 +153,7 @@ func TestCrossPlatformExecutionForbidden(t *testing.T) {
 }
 
 func TestWindowsProviderSequenceAndIdempotence(t *testing.T) {
-	target, err := Resolve(reviewedCatalog(), "localsend", "windows")
+	target, err := (Engine{}).Resolve(reviewedCatalog(), "localsend", "windows")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestWindowsProviderSequenceAndIdempotence(t *testing.T) {
 }
 
 func TestWindowsAmbiguousStateFailsClosed(t *testing.T) {
-	target, _ := Resolve(reviewedCatalog(), "localsend", "windows")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "windows")
 	f := &fakeRunner{output: []string{"unexpected package-manager output"}}
 	state, err := (Engine{Runner: f, Platform: "windows"}).Status(context.Background(), target)
 	if err == nil || state != "" {
@@ -213,7 +213,7 @@ func (f *interactiveRunner) RunInteractive(_ context.Context, program string, ar
 }
 
 func TestInteractiveInstallStreamsWithoutDisablingPrompts(t *testing.T) {
-	target, _ := Resolve(reviewedCatalog(), "localsend", "windows")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "windows")
 	f := &interactiveRunner{fakeRunner: fakeRunner{output: []string{
 		"No installed package found matching input criteria.",
 		"LocalSend LocalSend.LocalSend 1.18.2 winget",
@@ -244,7 +244,7 @@ func TestEmbeddedAllowlistMatchesEmbeddedCatalog(t *testing.T) {
 		t.Fatal("empty allowlist")
 	}
 	for _, entry := range allow.Entries {
-		if _, err := ResolveWith(c, entry.Application, entry.Platform, allow); err != nil {
+		if _, err := (Engine{Allow: &allow}).Resolve(c, entry.Application, entry.Platform); err != nil {
 			t.Fatalf("allowlist entry %s/%s does not match the catalog: %v", entry.Application, entry.Platform, err)
 		}
 	}
@@ -255,11 +255,11 @@ func TestAllowlistGatesInstallationIndependentlyOfCatalog(t *testing.T) {
 	c.Apps["vlc"] = catalog.Application{ID: "vlc", Upstream: "https://www.videolan.org/vlc/", Platforms: map[string]catalog.Platform{
 		"linux": {Status: "verified", Provider: "flatpak", PackageID: "org.videolan.VLC", Source: "https://flathub.org/apps/org.videolan.VLC", VerifiedAt: "2026-11-10"},
 	}}
-	if _, err := Resolve(c, "vlc", "linux"); err == nil {
+	if _, err := (Engine{}).Resolve(c, "vlc", "linux"); err == nil {
 		t.Fatal("verified catalog entry installed without an allowlist entry")
 	}
 	allow := Allowlist{SchemaVersion: 1, Entries: []AllowEntry{{Application: "vlc", Upstream: "https://www.videolan.org/vlc/", Platform: "linux", Provider: "flatpak", PackageID: "org.videolan.VLC", Source: "https://flathub.org/apps/org.videolan.VLC"}}}
-	target, err := ResolveWith(c, "vlc", "linux", allow)
+	target, err := (Engine{Allow: &allow}).Resolve(c, "vlc", "linux")
 	if err != nil {
 		t.Fatalf("reviewed data-only entry rejected: %v", err)
 	}
@@ -290,7 +290,7 @@ func TestParseAllowlistRejectsInvalidEntries(t *testing.T) {
 }
 
 func TestInstallTimeoutIsApplied(t *testing.T) {
-	target, _ := Resolve(reviewedCatalog(), "localsend", "windows")
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "windows")
 	f := &deadlineRunner{}
 	_, _ = (Engine{Runner: f, Platform: "windows", InstallTimeout: time.Minute}).Apply(context.Background(), target, true)
 	if len(f.deadlines) != 2 || !f.deadlines[0] || !f.deadlines[1] {

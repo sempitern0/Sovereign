@@ -154,8 +154,6 @@ func ProviderSetupHint(provider string) string {
 		return "Install or update App Installer (WinGet) from Microsoft Store, then run: suitectl doctor"
 	case "flatpak":
 		return "Install Flatpak with your distribution's package manager (https://flathub.org/setup), then run: suitectl doctor"
-	case "apt", "dnf":
-		return "Use a distribution that provides " + provider + ", or wait for another verified provider"
 	}
 	return ""
 }

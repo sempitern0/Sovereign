@@ -20,6 +20,13 @@ import (
 
 const version = "0.3.0-dev"
 
+// Process boundaries, replaceable in tests so no test run reaches a real
+// package manager or depends on the terminal it was started from.
+var (
+	newRunner  = func() install.Runner { return install.ExecRunner{} }
+	isTerminal = install.IsTerminal
+)
+
 func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
@@ -153,7 +160,7 @@ func run(args []string) int {
 			return loadError(err)
 		}
 		if !*noInspect && *platform == runtime.GOOS {
-			engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS}
+			engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS}
 			plan = inspectPlan(context.Background(), c, plan, engine)
 		}
 		if *machine {
@@ -174,6 +181,7 @@ func run(args []string) int {
 		app := fs.String("app", "", "Single application ID (H2: localsend only)")
 		yes := fs.Bool("yes", false, "Explicitly authorize installation")
 		machine := fs.Bool("json", false, "Machine-readable verification result")
+		nonInteractive := fs.Bool("non-interactive", false, "Never attach the package manager to the terminal; WinGet prompts are disabled")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -186,15 +194,18 @@ func run(args []string) int {
 		if args[0] == "apply" && *machine {
 			return usageError("--json applies only to verify")
 		}
+		if args[0] == "verify" && *nonInteractive {
+			return usageError("--non-interactive applies only to apply")
+		}
 		c, err := loadCatalog(*root)
 		if err != nil {
 			return loadError(err)
 		}
-		target, err := install.Resolve(c, *app, runtime.GOOS)
+		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
+		target, err := engine.Resolve(c, *app, runtime.GOOS)
 		if err != nil {
 			return loadError(err)
 		}
-		engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS, Interactive: install.IsTerminal()}
 		if args[0] == "verify" {
 			state, err := engine.Status(context.Background(), target)
 			if err != nil {
@@ -282,6 +293,6 @@ func usage() {
 	fmt.Println("       suitectl profiles list [--json]")
 	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect]")
 	fmt.Println("       suitectl verify --app localsend [--json]")
-	fmt.Println("       suitectl apply --app localsend --yes (consent required)")
+	fmt.Println("       suitectl apply --app localsend --yes [--non-interactive] (consent required)")
 	fmt.Println("The catalog is embedded; --root <checkout> reads a development copy instead.")
 }

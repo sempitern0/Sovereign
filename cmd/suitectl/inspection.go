@@ -16,7 +16,7 @@ func inspectPlan(ctx context.Context, c catalog.Catalog, plan planner.Plan, engi
 		if op.Status != "inspection_required" {
 			continue
 		}
-		target, err := install.Resolve(c, op.Application, plan.Platform)
+		target, err := engine.Resolve(c, op.Application, plan.Platform)
 		if err != nil {
 			// This is an H2 capability not implemented for this package.
 			// Retain the H1 status rather than failing the whole profile.

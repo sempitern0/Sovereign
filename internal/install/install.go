@@ -69,7 +69,8 @@ type Result struct {
 type Engine struct {
 	Runner   Runner
 	Platform string
-	// Allow overrides the embedded allowlist; tests only. Nil uses the embedded one.
+	// Allow is the reviewed allowlist used by Resolve, Status and Apply. Nil means
+	// the copy embedded in the binary; production code never sets it.
 	Allow *Allowlist
 	// Interactive streams installation output and lets the package manager prompt
 	// when the runner supports it. Otherwise prompts are disabled so nothing can
@@ -86,17 +87,14 @@ type Target struct {
 }
 
 // Resolve fails closed on unsupported platforms, unverified catalog entries,
-// unexpected sources, or unreviewed apps. No user input becomes a command.
-func Resolve(c catalog.Catalog, appID, platform string) (Target, error) {
-	allow, err := Embedded()
+// unexpected sources, or unreviewed apps. It uses the same allowlist that Status
+// and Apply re-check, so planning and installation can never disagree. No user
+// input becomes a command.
+func (e Engine) Resolve(c catalog.Catalog, appID, platform string) (Target, error) {
+	allow, err := e.allowlist()
 	if err != nil {
 		return Target{}, err
 	}
-	return ResolveWith(c, appID, platform, allow)
-}
-
-// ResolveWith is Resolve with an explicit allowlist.
-func ResolveWith(c catalog.Catalog, appID, platform string, allow Allowlist) (Target, error) {
 	if !allow.HasApplication(appID) {
 		return Target{}, fmt.Errorf("application %q is not approved for H2", appID)
 	}

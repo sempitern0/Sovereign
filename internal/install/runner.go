@@ -33,15 +33,12 @@ func (ExecRunner) RunInteractive(ctx context.Context, program string, args ...st
 	return nil
 }
 
-// IsTerminal reports whether both standard input and output are character devices.
+// IsTerminal reports whether both standard input and output are interactive
+// terminals. A character device is not enough: /dev/null and NUL are character
+// devices, and treating them as terminals would re-enable package-manager prompts
+// in unattended runs.
 func IsTerminal() bool {
-	for _, f := range []*os.File{os.Stdin, os.Stdout} {
-		info, err := f.Stat()
-		if err != nil || info.Mode()&os.ModeCharDevice == 0 {
-			return false
-		}
-	}
-	return true
+	return isTerminalFD(os.Stdin.Fd()) && isTerminalFD(os.Stdout.Fd())
 }
 
 func truncate(value string, max int) string {

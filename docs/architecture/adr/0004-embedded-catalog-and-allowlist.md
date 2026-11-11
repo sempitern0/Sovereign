@@ -26,17 +26,20 @@ Status: proposed (2026-11-11). Refines ADR-0003; does not widen what can be inst
    rebuilt binary, exactly like the previous constants.
 3. A target is installable only if the catalog entry is `verified` **and**
    application, upstream, platform, provider, package ID and source all match one
-   allowlist entry. The engine re-checks the allowlist for every `Status`/`Apply`
-   call (defense in depth). Providers stay pinned: WinGet on Windows, Flatpak on
-   Linux. CI (Go and Python) fails if an allowlist entry does not match a verified
-   catalog entry.
+   allowlist entry. `Engine.Resolve`, `Status` and `Apply` read the same allowlist
+   (defense in depth), so planning inspection and installation cannot disagree.
+   Providers stay pinned: WinGet on Windows, Flatpak on Linux. CI (Go and Python)
+   fails if an allowlist entry does not match a verified catalog entry.
 4. Provider behaviour is generic per provider, so enabling another reviewed
    package is a data change plus acceptance evidence, not new adapter code.
-5. Installation runs attached to the terminal when stdin/stdout are a terminal:
-   progress and package-manager prompts are visible and answered by the user.
-   Otherwise output is captured and WinGet runs with `--disable-interactivity`,
-   so an unattended run fails instead of blocking invisibly. Every provider call
-   has a deadline (inspection 2 min, installation 30 min).
+5. Installation runs attached to the terminal when stdin and stdout are real
+   terminals: progress and package-manager prompts are visible and answered by
+   the user. Detection asks the OS (`ioctl(TCGETS)` on Linux, `GetConsoleMode`
+   on Windows) instead of testing for a character device, because `/dev/null`
+   and `NUL` are character devices too. Otherwise, or with `--non-interactive`,
+   output is captured and WinGet runs with `--disable-interactivity`, so an
+   unattended run fails instead of blocking invisibly. Every provider call has a
+   deadline (inspection 2 min, installation 30 min).
 6. Plans add an optional `next_step` field (additive; plan schema stays 1) for
    blocked or actionable states. Sovereign still never installs package managers
    or adds repositories; it only tells the user the exact command.
