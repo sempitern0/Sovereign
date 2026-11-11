@@ -119,6 +119,20 @@
           "type": "string",
           "pattern": "^https://[^ ]+$"
         },
+        "scope": {
+          "enum": [
+            "user",
+            "machine"
+          ],
+          "description": "Install scope; machine requires administrator approval (Windows only)."
+        },
+        "provenance": {
+          "enum": [
+            "upstream",
+            "community"
+          ],
+          "description": "upstream: installs binaries published by the upstream project; community: built or maintained by a third party."
+        },
         "notes": {
           "type": "string"
         }

@@ -31,8 +31,18 @@ type Platform struct {
 	PackageID  string `yaml:"package_id,omitempty" json:"package_id,omitempty"`
 	VerifiedAt string `yaml:"verified_at,omitempty" json:"verified_at,omitempty"`
 	Source     string `yaml:"source,omitempty" json:"source,omitempty"`
+	// Scope is where the package installs: "user" or "machine" (Windows only;
+	// machine scope means the OS asks for administrator approval).
+	Scope string `yaml:"scope,omitempty" json:"scope,omitempty"`
+	// Provenance records who produced the installed artifact: "upstream" when the
+	// channel installs binaries published by the upstream project, "community"
+	// when a third party builds or maintains the package from upstream sources.
+	Provenance string `yaml:"provenance,omitempty" json:"provenance,omitempty"`
 	Notes      string `yaml:"notes,omitempty" json:"notes,omitempty"`
 }
+
+var scopes = []string{"user", "machine"}
+var provenances = []string{"upstream", "community"}
 
 type Application struct {
 	SchemaVersion int                 `yaml:"schema_version" json:"schema_version"`
@@ -214,12 +224,18 @@ func validateApp(a Application, filename string) error {
 		if entry.Status == "unsupported" && entry.Provider != "none" {
 			return fmt.Errorf("%s: unsupported requires provider none", a.ID)
 		}
-		if entry.Status != "verified" && entry.PackageID != "" {
-			return fmt.Errorf("%s: unverified entries cannot advertise a package ID", a.ID)
+		if entry.Status != "verified" && (entry.PackageID != "" || entry.Scope != "" || entry.Provenance != "") {
+			return fmt.Errorf("%s: unverified entries cannot advertise a package ID, scope or provenance", a.ID)
 		}
 		if entry.Status == "verified" {
 			if entry.Provider == "none" || !packageIdentifier.MatchString(entry.PackageID) || !httpsURL(entry.Source) || entry.VerifiedAt == "" {
 				return fmt.Errorf("%s: verified platform requires package ID, trusted HTTPS source and date", a.ID)
+			}
+			if !slices.Contains(scopes, entry.Scope) || !slices.Contains(provenances, entry.Provenance) {
+				return fmt.Errorf("%s: verified platform requires scope (user|machine) and provenance (upstream|community)", a.ID)
+			}
+			if entry.Scope == "machine" && platform != "windows" {
+				return fmt.Errorf("%s: machine scope is only supported on windows", a.ID)
 			}
 			date, err := time.Parse("2006-01-02", entry.VerifiedAt)
 			if err != nil || date.After(time.Now().UTC().Add(24*time.Hour)) {

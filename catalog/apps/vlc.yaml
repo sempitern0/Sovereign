@@ -9,11 +9,31 @@ capabilities:
   - offline_playback
 platforms:
   windows:
-    status: pending
+    status: verified
     provider: winget
+    package_id: VideoLAN.VLC
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/v/VideoLAN/VLC/3.0.24/VideoLAN.VLC.installer.yaml
+    verified_at: "2026-11-11"
+    scope: machine
+    provenance: upstream
+    notes: >-
+      WinGet community manifest 3.0.24, publisher VideoLAN. Installers come from
+      download.videolan.org with pinned SHA-256. Full installers are machine-scope
+      only (elevatesSelf), so Windows asks for administrator approval; the user-scope
+      alternative is a portable zip without Start menu entries or file associations.
   linux:
-    status: pending
+    status: verified
     provider: flatpak
+    package_id: org.videolan.VLC
+    source: https://flathub.org/apps/org.videolan.VLC
+    verified_at: "2026-11-11"
+    scope: user
+    provenance: community
+    notes: >-
+      Community package, labelled by Flathub as not verified by, affiliated with or
+      supported by VideoLAN. Built from the official download.videolan.org 3.0.24
+      tarball with pinned SHA-256 (manifest github.com/flathub/org.videolan.VLC).
+      Uses the org.kde.Platform runtime, which may be a large first download.
   android:
     status: pending
     provider: fdroid

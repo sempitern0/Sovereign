@@ -14,14 +14,18 @@ platforms:
     package_id: LocalSend.LocalSend
     source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/l/LocalSend/LocalSend/1.18.2/LocalSend.LocalSend.yaml
     verified_at: "2026-11-10"
-    notes: WinGet community manifest 1.18.2; scope user, exact ID and winget source.
+    scope: user
+    provenance: upstream
+    notes: WinGet community manifest 1.18.2 offers a user-scope installer downloaded from github.com/localsend releases (hash pinned); exact ID and winget source.
   linux:
     status: verified
     provider: flatpak
     package_id: org.localsend.localsend_app
     source: https://flathub.org/apps/org.localsend.localsend_app
     verified_at: "2026-11-10"
-    notes: User-scoped installation; existing official user flathub remote required.
+    scope: user
+    provenance: upstream
+    notes: Flathub repackages the official github.com/localsend release binaries (hash pinned). User-scoped installation; existing official user flathub remote required.
   android:
     status: pending
     provider: fdroid

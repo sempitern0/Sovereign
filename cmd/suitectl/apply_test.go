@@ -160,3 +160,41 @@ func TestNonInteractiveFlagIsApplyOnly(t *testing.T) {
 		t.Fatalf("got %d", got)
 	}
 }
+
+// Refusing without --yes must tell the user what consenting would imply.
+func TestRefusalExplainsScopeAndProvenance(t *testing.T) {
+	missing := func(program string, args []string) (string, error) {
+		if program == "winget" {
+			return "No installed package found matching input criteria.", nil
+		}
+		return "", nil
+	}
+	withProcess(t, &scriptedRunner{respond: missing}, true)
+	code, stderr := captureStderr(t, func() int { return run([]string{"apply", "--app", "vlc"}) })
+	if code != 3 {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+	want := map[string]string{"windows": "administrator approval", "linux": "community-built"}[runtime.GOOS]
+	if !strings.Contains(stderr, want) {
+		t.Fatalf("missing %q in %q", want, stderr)
+	}
+}
+
+func TestMachineScopeUnattendedIsRefusedByCLI(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("machine scope exists only on Windows")
+	}
+	runner := &scriptedRunner{respond: func(string, []string) (string, error) {
+		return "No installed package found matching input criteria.", nil
+	}}
+	withProcess(t, runner, false)
+	code, stderr := captureStderr(t, func() int { return run([]string{"apply", "--app", "vlc", "--yes"}) })
+	if code != 1 || !strings.Contains(stderr, "interactive terminal") || len(runner.interactive) != 0 {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+	for _, call := range runner.calls {
+		if call[1] == "install" {
+			t.Fatalf("installed without an attended terminal: %v", call)
+		}
+	}
+}

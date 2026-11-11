@@ -28,14 +28,31 @@ class CatalogTests(unittest.TestCase):
         path.write_text(path.read_text().replace("package_id: org.localsend.localsend_app", "package_id: org.evil.app"))
         self.assertTrue(any("package_id differs" in e for e in validate(self.root)))
 
+    def test_verified_requires_scope_and_provenance(self):
+        path = self.root / "catalog/apps/vlc.yaml"
+        path.write_text(path.read_text().replace("    provenance: community\n", "", 1))
+        self.assertTrue(any("scope (user|machine) and provenance" in e for e in validate(self.root)))
+
+    def test_machine_scope_only_on_windows(self):
+        path = self.root / "catalog/apps/vlc.yaml"
+        path.write_text(path.read_text().replace("    scope: user\n    provenance: community", "    scope: machine\n    provenance: community", 1))
+        self.assertTrue(any("machine scope is only supported on windows" in e for e in validate(self.root)))
+
+    def test_allowlist_scope_must_match_catalog(self):
+        path = self.root / "catalog/install-allowlist.yaml"
+        path.write_text(path.read_text().replace("    scope: machine\n", "    scope: user\n", 1))
+        self.assertTrue(any("scope differs" in e for e in validate(self.root)))
+
     def test_allowlist_rejects_unverified_entry(self):
         path = self.root / "catalog/install-allowlist.yaml"
-        path.write_text(path.read_text() + """  - application: vlc
-    upstream: https://www.videolan.org/vlc/
+        path.write_text(path.read_text() + """  - application: libreoffice
+    upstream: https://www.libreoffice.org/
     platform: linux
     provider: flatpak
-    package_id: org.videolan.VLC
-    source: https://flathub.org/apps/org.videolan.VLC
+    package_id: org.libreoffice.LibreOffice
+    source: https://flathub.org/apps/org.libreoffice.LibreOffice
+    scope: user
+    provenance: upstream
 """)
         self.assertTrue(any("not verified" in e for e in validate(self.root)))
 
@@ -50,7 +67,7 @@ class CatalogTests(unittest.TestCase):
         self.assertTrue(any("package_id" in e for e in validate(self.root)))
 
     def test_invalid_provider_rejected(self):
-        path = self.root / "catalog/apps/vlc.yaml"
+        path = self.root / "catalog/apps/libreoffice.yaml"
         path.write_text(path.read_text().replace("provider: winget", "provider: apt", 1))
         self.assertTrue(any("not supported" in e for e in validate(self.root)))
 

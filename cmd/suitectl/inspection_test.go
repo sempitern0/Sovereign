@@ -23,7 +23,7 @@ func (f *inspectRunner) Run(_ context.Context, _ string, _ ...string) (string, e
 func testPlanCatalog() catalog.Catalog {
 	return catalog.Catalog{Apps: map[string]catalog.Application{
 		"localsend": {ID: "localsend", Upstream: "https://localsend.org/", Platforms: map[string]catalog.Platform{
-			"linux": {Status: "verified", Provider: "flatpak", PackageID: "org.localsend.localsend_app", Source: "https://flathub.org/apps/org.localsend.localsend_app", VerifiedAt: "2026-11-10"},
+			"linux": {Status: "verified", Provider: "flatpak", PackageID: "org.localsend.localsend_app", Source: "https://flathub.org/apps/org.localsend.localsend_app", VerifiedAt: "2026-11-10", Scope: "user", Provenance: "upstream"},
 		}},
 	}}
 }
@@ -53,7 +53,7 @@ func TestPlanInspectionFailsClosed(t *testing.T) {
 func TestPlanUnreviewedAppKeepsH1(t *testing.T) {
 	c := testPlanCatalog()
 	f := &inspectRunner{}
-	p := planner.Plan{Platform: "linux", ReadOnly: true, Operations: []planner.Operation{{Application: "vlc", Status: "inspection_required", Action: "inspect"}}}
+	p := planner.Plan{Platform: "linux", ReadOnly: true, Operations: []planner.Operation{{Application: "libreoffice", Status: "inspection_required", Action: "inspect"}}}
 	got := inspectPlan(context.Background(), c, p, install.Engine{Runner: f, Platform: "linux"})
 	if got.Operations[0].Status != "inspection_required" || f.calls != 0 {
 		t.Fatalf("%+v", got)

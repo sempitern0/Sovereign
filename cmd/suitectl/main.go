@@ -169,6 +169,9 @@ func run(args []string) int {
 		fmt.Printf("Read-only plan: profile=%s platform=%s\n", plan.Profile, plan.Platform)
 		for _, op := range plan.Operations {
 			fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
+			for _, notice := range op.Notices() {
+				fmt.Printf("  %-16s %-22s !  %s\n", "", "", notice)
+			}
 			if op.NextStep != "" {
 				fmt.Printf("  %-16s %-22s -> %s\n", "", "", op.NextStep)
 			}
@@ -229,11 +232,21 @@ func run(args []string) int {
 		result, err := engine.Apply(context.Background(), target, *yes)
 		if errors.Is(err, install.ErrConsentRequired) {
 			fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
+			if target.NeedsAdminApproval() {
+				fmt.Fprintln(os.Stderr, "Note: this package installs for all users; Windows will ask for administrator approval.")
+			}
+			if target.Provenance == "community" {
+				fmt.Fprintln(os.Stderr, "Note: community-built package, not endorsed by the upstream project.")
+			}
 			return 3
 		}
 		if errors.Is(err, install.ErrFlathubRemoteMissing) {
 			fmt.Fprintln(os.Stderr, "Sovereign does not add package repositories. Add the official Flathub user remote yourself, then retry:")
 			fmt.Fprintln(os.Stderr, "  "+install.FlathubRemoteCommand)
+			return 1
+		}
+		if errors.Is(err, install.ErrAdminApprovalNeedsTerminal) {
+			fmt.Fprintln(os.Stderr, "Not installed:", err)
 			return 1
 		}
 		if err != nil {

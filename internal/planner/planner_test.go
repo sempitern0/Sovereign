@@ -123,3 +123,14 @@ func TestProviderUnavailableExplainsNextStep(t *testing.T) {
 		t.Fatalf("unhelpful blocked state: %+v", op)
 	}
 }
+
+func TestNoticesWarnBeforeConsent(t *testing.T) {
+	op := Operation{Scope: "machine", Provenance: "community"}
+	notices := op.Notices()
+	if len(notices) != 2 || !strings.Contains(notices[0], "administrator") || !strings.Contains(notices[1], "community") {
+		t.Fatalf("notices %v", notices)
+	}
+	if got := (Operation{Scope: "user", Provenance: "upstream"}).Notices(); len(got) != 0 {
+		t.Fatalf("unexpected notices %v", got)
+	}
+}

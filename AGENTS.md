@@ -13,7 +13,7 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 | Task | Read | Skip unless needed |
 | --- | --- | --- |
 | Any | `docs/STATUS.md`, this file | — |
-| Add/verify an application | Checklist below, `catalog/apps/*.yaml`, `catalog/install-allowlist.yaml`, ADR-0003/0004, `docs/H2_LOCALSEND.md` (reference acceptance) | PLAN beyond §3 |
+| Add/verify an application | Checklist below, `catalog/apps/*.yaml`, `catalog/install-allowlist.yaml`, ADR-0003/0004/0006, `docs/H2_LOCALSEND.md` (reference acceptance) | PLAN beyond §3 |
 | Planner / profiles | ADR-0002, PLAN §3–4, `internal/planner`, `profiles/` | install, bootstrap |
 | Installer / providers | ADR-0003/0004, PLAN §4 and §7, `internal/install`, `cmd/suitectl` | planner internals |
 | Release / bootstrap (H4) | ADR-0001, ADR-0005, PLAN §7–8, `docs/BOOTSTRAP_GO.md`, `bootstrap/`, CI | catalog details |
@@ -29,6 +29,7 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 - Installation requires a `verified` catalog entry that matches `catalog/install-allowlist.yaml` field by field. The allowlist is embedded at build time and must never be read from `--root` or any runtime path. Adding an entry enables real installs: one application per reviewed PR, with real-device acceptance.
 - Never install `pending` or `unsupported` packages. Never treat `inspection_required` as proof of an installed package. Ambiguous provider output fails closed.
 - Package managers run with structured arguments, never through a shell. No remote-script pipelines, silent elevation, repository/remote additions, auto-accepted agreements, telemetry or destructive operations (no uninstall, cleanup or overwrite by default).
+- Install scope is `user` unless the allowlist entry declares `machine` (Windows only, ADR-0006): the plan warns, and `apply` runs it only from an attended terminal so the OS shows its own administrator prompt. Community-built packages (`provenance: community`) are flagged to the user and accepted per app by the maintainer.
 - No installation side effects in tests: use simulated providers (`install.Runner`, `newRunner`/`isTerminal` in the CLI). Treat JSON status 0 as successful planning only.
 - Never store secrets, user files, host identifiers or personal paths in Git, logs, plans or exported profiles.
 - Multisuite is optional. Local use cannot depend on a network, account, VPN or NAS; a connector must degrade to the local flow.
@@ -36,12 +37,13 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 - Bootstrap: pinned official archives, SHA-256 verified before extraction, installed only under the user's data directory, no elevation. Windows may add only the reviewed toolchain `bin` to the HKCU user PATH idempotently (opt-out `-NoPath`); never the machine PATH. Linux does not persist PATH. Release binaries must not require Go.
 
 ## Adding or verifying an application
-1. Confirm the official upstream, license and, per platform, the exact package ID and source in the official channel (WinGet community manifest, Flathub page). Record the source URL and `verified_at` date. Never guess IDs.
-2. Set the platform entry to `verified` in `catalog/apps/<id>.yaml`; leave other platforms `pending`/`unsupported`.
-3. Add matching entries to `catalog/install-allowlist.yaml` (application, upstream, platform, provider, package_id, source).
-4. Run the quality checks; Go and Python CI fail if allowlist and catalog differ.
-5. Add simulated-provider tests only if behaviour differs from existing providers.
-6. Acceptance on real devices (follow the scenarios in `docs/H2_LOCALSEND.md`): clean install, `verify`, second `apply` unchanged, missing source, cancelled prompt, network loss. Record the result in STATUS before merge.
+1. Confirm the official upstream, license and, per platform, the exact package ID and source in the official channel (WinGet community manifest, Flathub page). Record the source URL and `verified_at` date. Never guess IDs. If a page is not reachable, read the channel's manifest repository with git (`microsoft/winget-pkgs` sparse checkout, `flathub/<app-id>`).
+2. From the manifest, record `scope` (WinGet installers' `Scope`; Flatpak is always `user`) and `provenance` (`upstream` if the channel installs the project's own binaries, `community` if a third party builds it; Flathub's "unverified/community" notice counts). A machine-only or community package needs the maintainer's explicit decision.
+3. Set the platform entry to `verified` in `catalog/apps/<id>.yaml` with those fields and evidence in `notes`; leave other platforms `pending`/`unsupported`.
+4. Add matching entries to `catalog/install-allowlist.yaml` (application, upstream, platform, provider, package_id, source, scope, provenance).
+5. Run the quality checks; Go and Python CI fail if allowlist and catalog differ. Make sure no test uses an approved app with a real runner (use `withProcess` in CLI tests).
+6. Add simulated-provider tests only if behaviour differs from existing providers.
+7. Acceptance on real devices (follow the scenarios in `docs/H2_LOCALSEND.md`): clean install, `verify`, second `apply` unchanged, missing source, cancelled prompt, network loss. Record the result in STATUS before merge.
 
 ## Quality checks
 ```bash

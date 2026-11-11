@@ -26,6 +26,10 @@ type Operation struct {
 	Status       string `json:"status"`
 	Reason       string `json:"reason"`
 	Verification string `json:"verification,omitempty"`
+	// Scope ("user" or "machine") and Provenance ("upstream" or "community")
+	// come from verified catalog entries so the user sees them before consenting.
+	Scope      string `json:"scope,omitempty"`
+	Provenance string `json:"provenance,omitempty"`
 	// NextStep is a short, human instruction for resolving a blocked or
 	// actionable state. It never implies that Sovereign will act on its own.
 	NextStep string `json:"next_step,omitempty"`
@@ -135,15 +139,29 @@ func Build(c catalog.Catalog, profileID string, device Device) (Plan, error) {
 		case !device.Providers[entry.Provider]:
 			op.Status, op.Reason = "provider_unavailable", fmt.Sprintf("Package manager %s not found on this device", entry.Provider)
 			op.Provider, op.PackageID = entry.Provider, entry.PackageID
+			op.Scope, op.Provenance = entry.Scope, entry.Provenance
 			op.NextStep = ProviderSetupHint(entry.Provider)
 		default:
 			op.Status, op.Reason = "inspection_required", "Package verified; installed state is not yet inspected (H2)"
 			op.Action, op.Provider, op.PackageID = "inspect", entry.Provider, entry.PackageID
 			op.Verification = entry.VerifiedAt
+			op.Scope, op.Provenance = entry.Scope, entry.Provenance
 		}
 		plan.Operations = append(plan.Operations, op)
 	}
 	return plan, nil
+}
+
+// Notices returns short warnings a user must see before authorizing an install.
+func (op Operation) Notices() []string {
+	var notices []string
+	if op.Scope == "machine" {
+		notices = append(notices, "installs for all users: Windows will ask for administrator approval")
+	}
+	if op.Provenance == "community" {
+		notices = append(notices, "community-built package, not endorsed by the upstream project")
+	}
+	return notices
 }
 
 // ProviderSetupHint explains how a user can make a provider available. Sovereign

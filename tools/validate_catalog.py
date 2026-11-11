@@ -55,10 +55,14 @@ def validate(root: Path) -> list[str]:
                         if status == "verified":
                             if provider == "none" or not all(config.get(field) for field in ("package_id", "source", "verified_at")):
                                 raise ValueError(f"{platform}: verified requires package_id, source and verified_at")
+                            if config.get("scope") not in ("user", "machine") or config.get("provenance") not in ("upstream", "community"):
+                                raise ValueError(f"{platform}: verified requires scope (user|machine) and provenance (upstream|community)")
+                            if config["scope"] == "machine" and platform != "windows":
+                                raise ValueError(f"{platform}: machine scope is only supported on windows")
                             if dt.date.fromisoformat(config["verified_at"]) > dt.date.today():
                                 raise ValueError(f"{platform}: verified_at is in the future")
-                        if status != "verified" and "package_id" in config:
-                            raise ValueError(f"{platform}: unverified entries cannot advertise package_id")
+                        if status != "verified" and any(k in config for k in ("package_id", "scope", "provenance")):
+                            raise ValueError(f"{platform}: unverified entries cannot advertise package_id, scope or provenance")
                     apps.add(obj["id"])
                     manifests[obj["id"]] = obj
                     dependencies[obj["id"]] = obj.get("depends_on", [])
@@ -120,8 +124,9 @@ def validate(root: Path) -> list[str]:
     return errors
 
 
-ALLOW_FIELDS = {"application", "upstream", "platform", "provider", "package_id", "source"}
+ALLOW_FIELDS = {"application", "upstream", "platform", "provider", "package_id", "source", "scope", "provenance"}
 IMPLEMENTED_PROVIDERS = {"windows": "winget", "linux": "flatpak"}
+ALLOWED_SCOPES = {"winget": ("user", "machine"), "flatpak": ("user",)}
 
 
 def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:
@@ -149,6 +154,8 @@ def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:
         seen.add(key)
         if IMPLEMENTED_PROVIDERS.get(entry["platform"]) != entry["provider"]:
             errors.append(f"{where}: provider {entry['provider']!r} not implemented for {entry['platform']}")
+        if entry["scope"] not in ALLOWED_SCOPES.get(entry["provider"], ()):
+            errors.append(f"{where}: scope {entry['scope']!r} not supported by {entry['provider']}")
         app = manifests.get(entry["application"])
         platform = (app or {}).get("platforms", {}).get(entry["platform"])
         if app is None or platform is None:
@@ -157,7 +164,8 @@ def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:
         if platform.get("status") != "verified":
             errors.append(f"{where}: catalog entry is not verified")
         for field, actual in (("upstream", app.get("upstream")), ("provider", platform.get("provider")),
-                              ("package_id", platform.get("package_id")), ("source", platform.get("source"))):
+                              ("package_id", platform.get("package_id")), ("source", platform.get("source")),
+                              ("scope", platform.get("scope")), ("provenance", platform.get("provenance"))):
             if entry[field] != actual:
                 errors.append(f"{where}: {field} differs from the catalog")
     return errors

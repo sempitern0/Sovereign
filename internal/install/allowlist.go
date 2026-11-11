@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	sovereign "github.com/sempitern0/Sovereign"
@@ -18,7 +19,13 @@ type AllowEntry struct {
 	Provider    string `yaml:"provider"`
 	PackageID   string `yaml:"package_id"`
 	Source      string `yaml:"source"`
+	Scope       string `yaml:"scope"`
+	Provenance  string `yaml:"provenance"`
 }
+
+// providerScopes lists the install scopes each implemented provider supports.
+// Flatpak installs are always per user; system installs would need root.
+var providerScopes = map[string][]string{"winget": {"user", "machine"}, "flatpak": {"user"}}
 
 // Allowlist is the set of packages H2 may install, independent of the catalog.
 type Allowlist struct {
@@ -60,6 +67,12 @@ func ParseAllowlist(data []byte) (Allowlist, error) {
 		}
 		if providerPlatform[entry.Platform] != entry.Provider {
 			return Allowlist{}, fmt.Errorf("install allowlist: entry %d: provider %q is not implemented for %q", i, entry.Provider, entry.Platform)
+		}
+		if !slices.Contains(providerScopes[entry.Provider], entry.Scope) {
+			return Allowlist{}, fmt.Errorf("install allowlist: entry %d: scope %q is not supported by %s", i, entry.Scope, entry.Provider)
+		}
+		if entry.Provenance != "upstream" && entry.Provenance != "community" {
+			return Allowlist{}, fmt.Errorf("install allowlist: entry %d: provenance must be upstream or community", i)
 		}
 		key := entry.Application + "/" + entry.Platform
 		if seen[key] {

@@ -45,8 +45,8 @@ const (
 func reviewedCatalog() catalog.Catalog {
 	return catalog.Catalog{Apps: map[string]catalog.Application{
 		"localsend": {ID: "localsend", Upstream: "https://localsend.org/", Platforms: map[string]catalog.Platform{
-			"windows": {Status: "verified", Provider: "winget", PackageID: localSendWin, Source: localSendWinSource, VerifiedAt: "2026-11-10"},
-			"linux":   {Status: "verified", Provider: "flatpak", PackageID: localSendFlatpak, Source: localSendLinuxSource, VerifiedAt: "2026-11-10"},
+			"windows": {Status: "verified", Provider: "winget", PackageID: localSendWin, Source: localSendWinSource, VerifiedAt: "2026-11-10", Scope: "user", Provenance: "upstream"},
+			"linux":   {Status: "verified", Provider: "flatpak", PackageID: localSendFlatpak, Source: localSendLinuxSource, VerifiedAt: "2026-11-10", Scope: "user", Provenance: "upstream"},
 		}},
 	}}
 }
@@ -71,7 +71,7 @@ func TestResolvePinnedSourcesAndPlatforms(t *testing.T) {
 	if _, err := (Engine{}).Resolve(c, "localsend", "linux"); err == nil {
 		t.Fatal("source substitution allowed")
 	}
-	if _, err := (Engine{}).Resolve(reviewedCatalog(), "vlc", "linux"); err == nil {
+	if _, err := (Engine{}).Resolve(reviewedCatalog(), "libreoffice", "linux"); err == nil {
 		t.Fatal("other app allowed")
 	}
 }
@@ -252,19 +252,18 @@ func TestEmbeddedAllowlistMatchesEmbeddedCatalog(t *testing.T) {
 
 func TestAllowlistGatesInstallationIndependentlyOfCatalog(t *testing.T) {
 	c := reviewedCatalog()
-	c.Apps["vlc"] = catalog.Application{ID: "vlc", Upstream: "https://www.videolan.org/vlc/", Platforms: map[string]catalog.Platform{
-		"linux": {Status: "verified", Provider: "flatpak", PackageID: "org.videolan.VLC", Source: "https://flathub.org/apps/org.videolan.VLC", VerifiedAt: "2026-11-10"},
-	}}
-	if _, err := (Engine{}).Resolve(c, "vlc", "linux"); err == nil {
+	beta := catalog.Platform{Status: "verified", Provider: "flatpak", PackageID: "org.example.Beta", Source: "https://flathub.org/apps/org.example.Beta", VerifiedAt: "2026-11-10", Scope: "user", Provenance: "upstream"}
+	c.Apps["beta"] = catalog.Application{ID: "beta", Upstream: "https://example.org/beta/", Platforms: map[string]catalog.Platform{"linux": beta}}
+	if _, err := (Engine{}).Resolve(c, "beta", "linux"); err == nil {
 		t.Fatal("verified catalog entry installed without an allowlist entry")
 	}
-	allow := Allowlist{SchemaVersion: 1, Entries: []AllowEntry{{Application: "vlc", Upstream: "https://www.videolan.org/vlc/", Platform: "linux", Provider: "flatpak", PackageID: "org.videolan.VLC", Source: "https://flathub.org/apps/org.videolan.VLC"}}}
-	target, err := (Engine{Allow: &allow}).Resolve(c, "vlc", "linux")
+	allow := Allowlist{SchemaVersion: 1, Entries: []AllowEntry{{Application: "beta", Upstream: "https://example.org/beta/", Platform: "linux", Provider: "flatpak", PackageID: "org.example.Beta", Source: "https://flathub.org/apps/org.example.Beta", Scope: "user", Provenance: "upstream"}}}
+	target, err := (Engine{Allow: &allow}).Resolve(c, "beta", "linux")
 	if err != nil {
 		t.Fatalf("reviewed data-only entry rejected: %v", err)
 	}
 	// The generic adapter handles a newly allowlisted package without new code.
-	f := &fakeRunner{output: []string{"org.videolan.VLC\n"}}
+	f := &fakeRunner{output: []string{"org.example.Beta\n"}}
 	state, err := (Engine{Runner: f, Platform: "linux", Allow: &allow}).Status(context.Background(), target)
 	if err != nil || state != Installed {
 		t.Fatalf("state %s err %v", state, err)
@@ -273,13 +272,27 @@ func TestAllowlistGatesInstallationIndependentlyOfCatalog(t *testing.T) {
 	if _, err := (Engine{Runner: &fakeRunner{}, Platform: "linux"}).Status(context.Background(), target); err == nil {
 		t.Fatal("engine accepted a target outside the embedded allowlist")
 	}
+	// A scope or provenance that differs from the reviewed entry is refused.
+	for _, mutate := range []func(*catalog.Platform){
+		func(p *catalog.Platform) { p.Provenance = "community" },
+		func(p *catalog.Platform) { p.Scope = "machine" },
+	} {
+		changed := beta
+		mutate(&changed)
+		c.Apps["beta"] = catalog.Application{ID: "beta", Upstream: "https://example.org/beta/", Platforms: map[string]catalog.Platform{"linux": changed}}
+		if _, err := (Engine{Allow: &allow}).Resolve(c, "beta", "linux"); err == nil {
+			t.Fatalf("catalog drift accepted: %+v", changed)
+		}
+	}
 }
 
 func TestParseAllowlistRejectsInvalidEntries(t *testing.T) {
 	for name, body := range map[string]string{
 		"unknown field":     "schema_version: 1\nentries: []\nextra: 1\n",
 		"bad version":       "schema_version: 2\nentries: []\n",
-		"provider mismatch": "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: winget, package_id: a.b, source: https://a/}\n",
+		"provider mismatch": "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: winget, package_id: a.b, source: https://a/, scope: user, provenance: upstream}\n",
+		"flatpak machine":   "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/, scope: machine, provenance: upstream}\n",
+		"bad provenance":    "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: windows, provider: winget, package_id: a.b, source: https://a/, scope: user, provenance: unknown}\n",
 		"empty field":       "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: '', source: https://a/}\n",
 		"duplicate":         "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/}\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/}\n",
 	} {
@@ -307,4 +320,59 @@ func (d *deadlineRunner) Run(ctx context.Context, _ string, args ...string) (str
 		return "No installed package found matching input criteria.", nil
 	}
 	return "", errors.New("stop")
+}
+
+func vlcWindowsTarget(t *testing.T) Target {
+	t.Helper()
+	c, err := catalog.LoadFS(sovereign.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := (Engine{}).Resolve(c, "vlc", "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !target.NeedsAdminApproval() || target.Provenance != "upstream" {
+		t.Fatalf("unexpected VLC target %+v", target)
+	}
+	return target
+}
+
+func TestMachineScopeRequiresAttendedTerminal(t *testing.T) {
+	target := vlcWindowsTarget(t)
+	f := &fakeRunner{output: []string{"No installed package found matching input criteria."}}
+	_, err := (Engine{Runner: f, Platform: "windows"}).Apply(context.Background(), target, true)
+	if !errors.Is(err, ErrAdminApprovalNeedsTerminal) {
+		t.Fatalf("got %v", err)
+	}
+	if len(f.calls) != 1 || f.calls[0].args[0] != "list" {
+		t.Fatalf("unattended machine-scope install reached the package manager: %+v", f.calls)
+	}
+}
+
+func TestMachineScopeInstallsWithMachineScopeWhenAttended(t *testing.T) {
+	target := vlcWindowsTarget(t)
+	f := &interactiveRunner{fakeRunner: fakeRunner{output: []string{
+		"No installed package found matching input criteria.",
+		"VLC media player VideoLAN.VLC 3.0.24 winget",
+	}}}
+	result, err := (Engine{Runner: f, Platform: "windows", Interactive: true}).Apply(context.Background(), target, true)
+	if err != nil || !result.Changed || result.State != Installed {
+		t.Fatalf("result %+v err %v", result, err)
+	}
+	want := []string{"install", "--id", "VideoLAN.VLC", "--exact", "--source", "winget", "--no-upgrade", "--scope", "machine"}
+	if len(f.interactive) != 1 || !reflect.DeepEqual(f.interactive[0].args, want) {
+		t.Fatalf("unexpected install: %+v", f.interactive)
+	}
+}
+
+func TestEmbeddedVLCLinuxIsCommunityUserScope(t *testing.T) {
+	c, err := catalog.LoadFS(sovereign.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := (Engine{}).Resolve(c, "vlc", "linux")
+	if err != nil || target.Scope != "user" || target.Provenance != "community" || target.PackageID != "org.videolan.VLC" {
+		t.Fatalf("target %+v err %v", target, err)
+	}
 }

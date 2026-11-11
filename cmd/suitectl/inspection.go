@@ -37,6 +37,9 @@ func inspectPlan(ctx context.Context, c catalog.Catalog, plan planner.Plan, engi
 		case install.Missing:
 			op.Status, op.Reason = "not_installed", "Package missing; explicit --yes required before installation"
 			op.NextStep = "After reviewing the plan: suitectl apply --app " + op.Application + " --yes"
+			if target.NeedsAdminApproval() {
+				op.NextStep += " (from an interactive terminal; Windows will ask for administrator approval)"
+			}
 		default:
 			op.Status, op.Reason = "inspection_failed", "Package manager returned an unknown state"
 		}
