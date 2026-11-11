@@ -7,9 +7,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"sort"
 
+	sovereign "github.com/sempitern0/Sovereign"
 	"github.com/sempitern0/Sovereign/internal/catalog"
 	"github.com/sempitern0/Sovereign/internal/diagnostics"
 	"github.com/sempitern0/Sovereign/internal/install"
@@ -67,7 +69,7 @@ func run(args []string) int {
 		}
 		fs := flag.NewFlagSet(args[0]+" list", flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
-		root := fs.String("root", ".", "Repository root")
+		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
 		platform := fs.String("platform", "", "Filter applications by platform")
 		machine := fs.Bool("json", false, "JSON output")
 		if err := fs.Parse(args[2:]); err != nil {
@@ -79,7 +81,7 @@ func run(args []string) int {
 		if *platform != "" && *platform != "windows" && *platform != "linux" && *platform != "android" {
 			return usageError("unsupported platform")
 		}
-		c, err := catalog.Load(*root)
+		c, err := loadCatalog(*root)
 		if err != nil {
 			return loadError(err)
 		}
@@ -127,7 +129,7 @@ func run(args []string) int {
 	case "plan":
 		fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
-		root := fs.String("root", ".", "Repository root")
+		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
 		profile := fs.String("profile", "", "Required profile ID")
 		platform := fs.String("platform", runtime.GOOS, "Target platform (windows, linux, android)")
 		machine := fs.Bool("json", false, "Versioned JSON plan")
@@ -138,7 +140,7 @@ func run(args []string) int {
 		if fs.NArg() != 0 || *profile == "" {
 			return usageError("plan requires --profile and no positional arguments")
 		}
-		c, err := catalog.Load(*root)
+		c, err := loadCatalog(*root)
 		if err != nil {
 			return loadError(err)
 		}
@@ -160,12 +162,15 @@ func run(args []string) int {
 		fmt.Printf("Read-only plan: profile=%s platform=%s\n", plan.Profile, plan.Platform)
 		for _, op := range plan.Operations {
 			fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
+			if op.NextStep != "" {
+				fmt.Printf("  %-16s %-22s -> %s\n", "", "", op.NextStep)
+			}
 		}
 		return 0
 	case "apply", "verify":
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
-		root := fs.String("root", ".", "Repository root")
+		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
 		app := fs.String("app", "", "Single application ID (H2: localsend only)")
 		yes := fs.Bool("yes", false, "Explicitly authorize installation")
 		machine := fs.Bool("json", false, "Machine-readable verification result")
@@ -181,7 +186,7 @@ func run(args []string) int {
 		if args[0] == "apply" && *machine {
 			return usageError("--json applies only to verify")
 		}
-		c, err := catalog.Load(*root)
+		c, err := loadCatalog(*root)
 		if err != nil {
 			return loadError(err)
 		}
@@ -189,11 +194,12 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
-		engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS}
+		engine := install.Engine{Runner: install.ExecRunner{}, Platform: runtime.GOOS, Interactive: install.IsTerminal()}
 		if args[0] == "verify" {
 			state, err := engine.Status(context.Background(), target)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Verification failed:", err)
+				printProviderHint(err, target.Provider)
 				return 1
 			}
 			result := install.Result{SchemaVersion: 1, Application: target.AppID, Platform: runtime.GOOS, Provider: target.Provider, State: state, Detail: "Local package-manager inspection"}
@@ -214,14 +220,37 @@ func run(args []string) int {
 			fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
 			return 3
 		}
+		if errors.Is(err, install.ErrFlathubRemoteMissing) {
+			fmt.Fprintln(os.Stderr, "Sovereign does not add package repositories. Add the official Flathub user remote yourself, then retry:")
+			fmt.Fprintln(os.Stderr, "  "+install.FlathubRemoteCommand)
+			return 1
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Installation/verification failed:", err)
+			printProviderHint(err, target.Provider)
 			return 1
 		}
 		fmt.Printf("%s: %s (%s)\n", result.Application, result.State, result.Detail)
 		return 0
 	default:
 		return usageError("unknown command: " + args[0])
+	}
+}
+
+// loadCatalog uses the catalog compiled into the binary unless a development
+// checkout is given explicitly with --root.
+func loadCatalog(root string) (catalog.Catalog, error) {
+	if root == "" {
+		return catalog.LoadFS(sovereign.Files)
+	}
+	return catalog.Load(root)
+}
+
+func printProviderHint(err error, provider string) {
+	if errors.Is(err, exec.ErrNotFound) {
+		if hint := planner.ProviderSetupHint(provider); hint != "" {
+			fmt.Fprintln(os.Stderr, "Next step:", hint)
+		}
 	}
 }
 
@@ -249,9 +278,10 @@ func loadError(err error) int {
 func usage() {
 	fmt.Println("Sovereign — local-first environment orchestrator")
 	fmt.Println("Usage: suitectl doctor [--json] | version")
-	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json] [--root .]")
-	fmt.Println("       suitectl profiles list [--json] [--root .]")
-	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect] [--root .]")
-	fmt.Println("       suitectl verify --app localsend [--json] [--root .]")
-	fmt.Println("       suitectl apply --app localsend --yes [--root .] (consent required)")
+	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json]")
+	fmt.Println("       suitectl profiles list [--json]")
+	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect]")
+	fmt.Println("       suitectl verify --app localsend [--json]")
+	fmt.Println("       suitectl apply --app localsend --yes (consent required)")
+	fmt.Println("The catalog is embedded; --root <checkout> reads a development copy instead.")
 }

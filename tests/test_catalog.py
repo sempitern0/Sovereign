@@ -15,12 +15,29 @@ class CatalogTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         for part in ("schemas", "catalog/apps", "profiles"):
             shutil.copytree(ROOT / part, self.root / part)
+        shutil.copy(ROOT / "catalog/install-allowlist.yaml", self.root / "catalog/install-allowlist.yaml")
 
     def tearDown(self):
         self.temp.cleanup()
 
     def test_valid_catalog(self):
         self.assertEqual(validate(self.root), [])
+
+    def test_allowlist_must_match_verified_catalog(self):
+        path = self.root / "catalog/install-allowlist.yaml"
+        path.write_text(path.read_text().replace("package_id: org.localsend.localsend_app", "package_id: org.evil.app"))
+        self.assertTrue(any("package_id differs" in e for e in validate(self.root)))
+
+    def test_allowlist_rejects_unverified_entry(self):
+        path = self.root / "catalog/install-allowlist.yaml"
+        path.write_text(path.read_text() + """  - application: vlc
+    upstream: https://www.videolan.org/vlc/
+    platform: linux
+    provider: flatpak
+    package_id: org.videolan.VLC
+    source: https://flathub.org/apps/org.videolan.VLC
+""")
+        self.assertTrue(any("not verified" in e for e in validate(self.root)))
 
     def test_unknown_app_rejected(self):
         with (self.root / "profiles/essential.yaml").open("a") as out:

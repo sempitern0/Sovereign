@@ -1,0 +1,20 @@
+# Reviewed installation targets (ADR-0003, ADR-0004).
+#
+# This file is embedded into suitectl at build time and is never read from
+# --root. Each entry must match a verified catalog entry exactly. Adding an
+# entry enables real installations: it requires code review, the acceptance
+# evidence described in docs/H2_LOCALSEND.md and a rebuilt binary.
+schema_version: 1
+entries:
+  - application: localsend
+    upstream: https://localsend.org/
+    platform: windows
+    provider: winget
+    package_id: LocalSend.LocalSend
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/l/LocalSend/LocalSend/1.18.2/LocalSend.LocalSend.yaml
+  - application: localsend
+    upstream: https://localsend.org/
+    platform: linux
+    provider: flatpak
+    package_id: org.localsend.localsend_app
+    source: https://flathub.org/apps/org.localsend.localsend_app

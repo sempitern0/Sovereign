@@ -7,4 +7,8 @@
 - Declarative manifests, schema contracts, CI and security documentation.
 - Fix Windows Go CLI discoverability by idempotently adding the verified Go directory to HKCU user PATH, with `-NoPath` opt-out, process activation and tests.
 - Per-user self-bootstrapping Go 1.27.3 for Linux and Windows x86-64/ARM64 using SHA256-pinned official archives, offline fail-closed mode and no permanent PATH changes.
+- Embed catalog, profiles and install allowlist in the binary so `suitectl` runs outside a checkout; `--root` reads a development copy (ADR-0004).
+- Replace LocalSend-specific adapter constants with a reviewed, embedded allowlist and generic WinGet/Flatpak handling; Go and Python CI cross-check it against verified catalog entries.
+- Show package-manager progress and prompts on a terminal; disable WinGet prompts when unattended; add inspection/installation timeouts.
+- Add `next_step` guidance to blocked plan entries and print the exact Flathub remote command or package-manager setup hint on failure.
 - First allowlisted, opt-in LocalSend installer and read-only verification for WinGet/Flatpak with mocked acceptance, failure and idempotency tests. Other apps remain blocked.

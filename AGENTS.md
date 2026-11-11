@@ -9,6 +9,7 @@
 ## Security invariants
 - `doctor`, `catalog list`, `profiles list`, and `plan` are read-only. Only `verify --app localsend` and explicit `apply --app localsend --yes` are allowed in H2; all other installs fail closed.
 - Never install `pending` or `unsupported` packages. Never treat `inspection_required` as proof of an installed package.
+- Installation requires a `verified` catalog entry that matches `catalog/install-allowlist.yaml` field by field. The allowlist is embedded at build time and must never be read from `--root` or any runtime path. Adding an entry enables real installs: only after the H2 acceptance evidence below, in its own reviewed PR.
 - Multisuite is an optional, future connector. Local use cannot depend on a network, account or NAS.
 - Never store secrets or user files in Git/logs. Never use remote script execution pipelines, silent elevation, unsolicited telemetry or destructive operations.
 - Keep YAML and JSON Schema versioned; reject invalid references, missing alternatives, unknown keys and dependency cycles.

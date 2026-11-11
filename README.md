@@ -12,6 +12,8 @@ Sovereign aims to prepare everyday devices with declarative catalogs, profiles a
 - Dependency-aware, platform-specific deterministic planning with blocked/unverified status and explicit alternative choices.
 - Windows/Linux CI, Go tests and negative catalog tests.
 - `apply --app localsend --yes` and `verify --app localsend` are supported on the host OS only. Other apps and Android remain blocked; `plan` is unchanged and read-only.
+- The catalog, profiles and the reviewed install allowlist are embedded in the binary, so `suitectl` works from any directory without a checkout. `--root <checkout>` reads a development copy of the catalog and profiles; the allowlist is always the embedded one ([ADR-0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md)).
+- Blocked plan entries include a `next_step` with the exact action to take (for example, how to install a missing package manager).
 
 **H2 is experimental**: apply invokes the native package manager with user consent and can install LocalSend. All other H0/H1 commands remain read-only. No release bundles or real-device QA have been completed.
 
@@ -46,6 +48,8 @@ go run ./cmd/suitectl doctor --json
 go run ./cmd/suitectl profiles list
 go run ./cmd/suitectl catalog list --platform windows
 go run ./cmd/suitectl plan --profile essential --platform linux --json
+# Test catalog edits without rebuilding: read the checkout instead of the embedded copy
+go run ./cmd/suitectl plan --profile essential --root . --json
 # Only after reviewing the plan, sources and local prerequisites:
 go run ./cmd/suitectl verify --app localsend
 go run ./cmd/suitectl apply --app localsend --yes
@@ -55,7 +59,7 @@ Bootstrap security: Go 1.27.3 archive hashes are pinned from [the official Go re
 
 ## H2 first installation
 
-Only **LocalSend** is allowlisted. `apply --app localsend` first checks installed state: if already installed, returns success without consent or changes. If missing, explicit `--yes` is required before installation. An ambiguous inspection always fails closed. `verify` is read-only and returns nonzero if not installed or if inspection is ambiguous. A second successful `apply` leaves the existing installation unchanged. On Linux, configure the official **Flathub user remote** yourself first (no repository additions or privileged operations by Sovereign). On Windows, WinGet uses the **winget** source, the exact identifier, user scope and the no-upgrade option; WinGet's agreement prompts remain under your control. Neither mode uses a shell or downloads a remote script.
+Only **LocalSend** is allowlisted, in the reviewed [`catalog/install-allowlist.yaml`](catalog/install-allowlist.yaml) compiled into the binary. `apply --app localsend` first checks installed state: if already installed, returns success without consent or changes. If missing, explicit `--yes` is required before installation. An ambiguous inspection always fails closed. `verify` is read-only and returns nonzero if not installed or if inspection is ambiguous. A second successful `apply` leaves the existing installation unchanged. On Linux, configure the official **Flathub user remote** yourself first (no repository additions or privileged operations by Sovereign); if it is missing, `apply` prints the exact command: `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo`. On Windows, WinGet uses the **winget** source, the exact identifier, user scope and the no-upgrade option. In a terminal, the package manager runs attached to it: you see its progress and answer its agreement prompts yourself. Without a terminal (scripts, CI), output is captured and WinGet runs with `--disable-interactivity`, so it fails rather than waiting on an invisible prompt. Inspection and installation have timeouts (2 and 30 minutes). Neither mode uses a shell or downloads a remote script.
 
 Sources and operating checklist: [H2 LocalSend runbook](docs/H2_LOCALSEND.md). The current smoke tests simulate the package managers; run actual installations only on a disposable or test device before approving H2 for general use.
 
@@ -82,7 +86,7 @@ A plan carries no private metadata and can be generated entirely offline. Cross-
 - `integrations/multisuite`: opt-in connector boundary for later work.
 - `android`: guided onboarding planned; no silent APK installation.
 
-The repository's [technical plan](PLAN_TECNICO_SUITE_LIBRE.md) is authoritative. Development instructions: [AGENTS.md](AGENTS.md). Security: [SECURITY.md](SECURITY.md). ADRs: [0001](docs/architecture/adr/0001-core-stack.md), [0002](docs/architecture/adr/0002-planning-contract.md).
+The repository's [technical plan](PLAN_TECNICO_SUITE_LIBRE.md) is authoritative. Development instructions: [AGENTS.md](AGENTS.md). Security: [SECURITY.md](SECURITY.md). ADRs: [0001](docs/architecture/adr/0001-core-stack.md), [0002](docs/architecture/adr/0002-planning-contract.md), [0003](docs/architecture/adr/0003-first-provider.md), [0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md).
 
 ## Delivery sequence
 

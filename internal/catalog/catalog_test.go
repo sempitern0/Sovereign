@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	sovereign "github.com/sempitern0/Sovereign"
 )
 
 func fixture(t *testing.T) string {
@@ -88,5 +90,29 @@ func TestRejectMissingAlternative(t *testing.T) {
 	}
 	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), "missing application") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestEmbeddedCatalogLoads(t *testing.T) {
+	c, err := LoadFS(sovereign.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := c.Profiles["essential"]; !ok || len(c.Apps) == 0 {
+		t.Fatalf("embedded catalog incomplete: %d apps", len(c.Apps))
+	}
+}
+
+func TestRejectSymlinkedManifest(t *testing.T) {
+	root := fixture(t)
+	target := filepath.Join(t.TempDir(), "beta.yaml")
+	if err := os.WriteFile(target, []byte("schema_version: 1\nid: beta\nname: Beta\ncategory: media\nlicense: MIT\nupstream: https://example.org/\nplatforms:\n  linux:\n    status: pending\n    provider: flatpak\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "catalog/apps/beta.yaml")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), "only regular") {
+		t.Fatalf("symlinked manifest accepted: %v", err)
 	}
 }

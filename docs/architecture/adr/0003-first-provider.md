@@ -1,6 +1,6 @@
 # ADR-0003 — H2: adaptador limitado a LocalSend
 
-Status: experimental / pending real-device QA (2026-11-10).
+Status: experimental / pending real-device QA (2026-11-10). Allowlist location and provider handling refined by [ADR-0004](0004-embedded-catalog-and-allowlist.md).
 
 ## Context and decision
 
