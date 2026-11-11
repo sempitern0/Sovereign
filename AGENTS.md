@@ -54,6 +54,7 @@ python3 -m pip install -r tools/requirements.txt
 python3 tools/validate_catalog.py
 python3 -m unittest discover -s tests -v
 sh -n bootstrap/setup.sh
+git status --short --ignored -- cmd internal   # new source files must not show as ignored ("!!")
 # CI also runs on Windows: go vet/test, bootstrap/setup.ps1 parse and smoke test
 ```
 Catalog edits are embedded at build time: test them with `--root .` or rebuild.
