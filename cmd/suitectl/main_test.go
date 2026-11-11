@@ -8,10 +8,11 @@ import (
 
 func TestH2RejectsUnsupportedAndUnconsentedOperations(t *testing.T) {
 	root := filepath.Join("..", "..")
+	// Never reach a real package manager, even if the app were approved.
+	withProcess(t, &scriptedRunner{respond: func(string, []string) (string, error) { return "", nil }}, false)
 	for _, args := range [][]string{
-
-		{"apply", "--app", "vlc", "--yes", "--root", root},
-		{"verify", "--app", "vlc", "--root", root},
+		{"apply", "--app", "libreoffice", "--yes", "--root", root},
+		{"verify", "--app", "libreoffice", "--root", root},
 	} {
 		if got := run(args); got == 0 {
 			t.Fatalf("%v unexpectedly succeeded", args)

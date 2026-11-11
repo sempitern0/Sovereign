@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — H0 + H1 + H2 LocalSend
+## Unreleased — H3
+
+- H3-1: verify and allowlist VLC (WinGet `VideoLAN.VLC` in machine scope; Flathub `org.videolan.VLC`, community build). Add required `scope` and `provenance` to verified catalog and allowlist entries; machine scope only from an attended terminal; plan and consent refusal show administrator and community notices (ADR-0006).
+
+## H0 + H1 + H2 LocalSend
 - Go read-only CLI diagnostic, catalog/profile discovery and deterministic profile planning.
 - Strict YAML decoder, cross-reference and cycle checks, dependency ordering, optional alternatives.
 - JSON v1 plans, blocked/unverified status, mock device/provider tests and invalid-catalog tests.

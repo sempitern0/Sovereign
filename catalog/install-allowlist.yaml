@@ -1,9 +1,13 @@
-# Reviewed installation targets (ADR-0003, ADR-0004).
+# Reviewed installation targets (ADR-0003, ADR-0004, ADR-0006).
 #
 # This file is embedded into suitectl at build time and is never read from
 # --root. Each entry must match a verified catalog entry exactly. Adding an
-# entry enables real installations: it requires code review, the acceptance
+# entry enables real installs: it requires code review, the acceptance
 # evidence described in docs/H2_LOCALSEND.md and a rebuilt binary.
+#
+# scope: user | machine (machine = Windows asks for administrator approval).
+# provenance: upstream (binaries published by the upstream project) |
+#             community (built or maintained by a third party).
 schema_version: 1
 entries:
   - application: localsend
@@ -12,9 +16,29 @@ entries:
     provider: winget
     package_id: LocalSend.LocalSend
     source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/l/LocalSend/LocalSend/1.18.2/LocalSend.LocalSend.yaml
+    scope: user
+    provenance: upstream
   - application: localsend
     upstream: https://localsend.org/
     platform: linux
     provider: flatpak
     package_id: org.localsend.localsend_app
     source: https://flathub.org/apps/org.localsend.localsend_app
+    scope: user
+    provenance: upstream
+  - application: vlc
+    upstream: https://www.videolan.org/vlc/
+    platform: windows
+    provider: winget
+    package_id: VideoLAN.VLC
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/v/VideoLAN/VLC/3.0.24/VideoLAN.VLC.installer.yaml
+    scope: machine
+    provenance: upstream
+  - application: vlc
+    upstream: https://www.videolan.org/vlc/
+    platform: linux
+    provider: flatpak
+    package_id: org.videolan.VLC
+    source: https://flathub.org/apps/org.videolan.VLC
+    scope: user
+    provenance: community

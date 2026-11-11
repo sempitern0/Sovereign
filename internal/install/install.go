@@ -43,6 +43,10 @@ var ErrConsentRequired = errors.New("installation requires explicit consent (--y
 // ErrFlathubRemoteMissing means the user-scoped official Flathub remote is absent.
 var ErrFlathubRemoteMissing = errors.New("official user Flathub remote missing; configure it separately before applying")
 
+// ErrAdminApprovalNeedsTerminal stops a machine-scope install that would trigger
+// an administrator prompt nobody is attending.
+var ErrAdminApprovalNeedsTerminal = errors.New("this package installs for all users and Windows will ask for administrator approval; run apply from an interactive terminal")
+
 // FlathubRemoteCommand is shown to the user; Sovereign never runs it itself.
 const FlathubRemoteCommand = "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
 
@@ -81,10 +85,15 @@ type Engine struct {
 }
 
 type Target struct {
-	AppID     string
-	Provider  string
-	PackageID string
+	AppID      string
+	Provider   string
+	PackageID  string
+	Scope      string
+	Provenance string
 }
+
+// NeedsAdminApproval reports whether installing triggers an OS elevation prompt.
+func (t Target) NeedsAdminApproval() bool { return t.Scope == "machine" }
 
 // Resolve fails closed on unsupported platforms, unverified catalog entries,
 // unexpected sources, or unreviewed apps. It uses the same allowlist that Status
@@ -113,10 +122,11 @@ func (e Engine) Resolve(c catalog.Catalog, appID, platform string) (Target, erro
 	if !ok {
 		return Target{}, fmt.Errorf("application %q is not approved for H2 on %s", appID, platform)
 	}
-	if app.Upstream != entry.Upstream || spec.Provider != entry.Provider || spec.PackageID != entry.PackageID || spec.Source != entry.Source {
-		return Target{}, fmt.Errorf("%s package identity or source differs from the reviewed allowlist", entry.Provider)
+	if app.Upstream != entry.Upstream || spec.Provider != entry.Provider || spec.PackageID != entry.PackageID || spec.Source != entry.Source ||
+		spec.Scope != entry.Scope || spec.Provenance != entry.Provenance {
+		return Target{}, fmt.Errorf("%s package identity, source, scope or provenance differs from the reviewed allowlist", entry.Provider)
 	}
-	return Target{AppID: appID, Provider: entry.Provider, PackageID: entry.PackageID}, nil
+	return Target{AppID: appID, Provider: entry.Provider, PackageID: entry.PackageID, Scope: entry.Scope, Provenance: entry.Provenance}, nil
 }
 
 // providerPlatform pins each implemented provider to its only supported OS.
@@ -146,7 +156,7 @@ func (e Engine) validate(t Target) error {
 	// Defense in depth: a Target must still be a reviewed one, even if it was
 	// constructed without Resolve.
 	entry, ok := allow.Lookup(t.AppID, e.Platform)
-	if !ok || t.Provider != entry.Provider || t.PackageID != entry.PackageID || providerPlatform[e.Platform] != t.Provider {
+	if !ok || t.Provider != entry.Provider || t.PackageID != entry.PackageID || t.Scope != entry.Scope || providerPlatform[e.Platform] != t.Provider {
 		return errors.New("unreviewed installation target")
 	}
 	return nil
@@ -229,9 +239,12 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 		}
 		program, args = "flatpak", []string{"install", "--user", "--noninteractive", "flathub", t.PackageID}
 	case "winget":
-		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade", "--scope", "user"}
+		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade", "--scope", t.Scope}
 	default:
 		return result, errors.New("unsupported provider")
+	}
+	if t.NeedsAdminApproval() && !e.attended() {
+		return result, ErrAdminApprovalNeedsTerminal
 	}
 	if err := e.install(ctx, program, args); err != nil {
 		return result, fmt.Errorf("%s installation failed: %w", providerName(t.Provider), err)
@@ -269,7 +282,7 @@ func (e Engine) requireFlathub(ctx context.Context) error {
 func (e Engine) install(ctx context.Context, program string, args []string) error {
 	ctx, cancel := withTimeout(ctx, e.InstallTimeout, DefaultInstallTimeout)
 	defer cancel()
-	if interactive, ok := e.Runner.(InteractiveRunner); ok && e.Interactive {
+	if interactive, ok := e.Runner.(InteractiveRunner); ok && e.attended() {
 		return interactive.RunInteractive(ctx, program, args...)
 	}
 	if program == "winget" {
@@ -277,6 +290,12 @@ func (e Engine) install(ctx context.Context, program string, args []string) erro
 	}
 	_, err := e.Runner.Run(ctx, program, args...)
 	return err
+}
+
+// attended reports whether installation output and prompts reach a person.
+func (e Engine) attended() bool {
+	_, ok := e.Runner.(InteractiveRunner)
+	return ok && e.Interactive
 }
 
 func providerName(provider string) string {

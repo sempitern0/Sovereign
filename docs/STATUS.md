@@ -13,7 +13,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 | H0 — Fundación | Completado | Esquema v1, validador Python y CI Windows/Linux |
 | H1 — Planificación | Completado | `plan` determinista y JSON v1; tests de alternativas, dependencias e incompatibilidades |
 | H2 — Primera instalación (LocalSend) | Completado | PR #2 y PR #3 fusionadas. CI de PR #3 en verde en ubuntu-latest y windows-latest (Go, catálogo). **El usuario confirma pruebas reales (2026-11-11)**; no se han adjuntado registros |
-| H3 — Perfil esencial instalable | Pendiente | — |
+| H3 — Perfil esencial instalable | En curso | H3-1 (VLC) en revisión: verificado y en allowlist; **falta aceptación en dispositivo real**. H3-2 a H3-4 pendientes |
 | H4 — Primera release distribuible | Pendiente | — |
 | H5 — Datos y portabilidad | Pendiente | — |
 | H6 — Android guiado | Pendiente | — |
@@ -25,12 +25,17 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 - `suitectl doctor | catalog list | profiles list | plan` (solo lectura) y `verify` / `apply --app localsend --yes`.
 - Funciona desde cualquier carpeta: catálogo, perfiles y allowlist van incrustados. `--root <checkout>` lee una copia de desarrollo; la allowlist nunca se lee de disco.
-- Instalable: **solo LocalSend** (WinGet en Windows, Flatpak en Linux). VLC y LibreOffice: `pending`. Android: no soportado aún.
+- Instalable: **LocalSend** (WinGet en Windows, Flatpak en Linux). **VLC** en la rama H3-1, pendiente de aceptación real: Windows en ámbito máquina (aviso de UAC, solo desde terminal) y Linux desde el Flathub comunitario. LibreOffice: `pending`. Android: no soportado aún.
+- El plan muestra el ámbito (`scope`) y el origen (`provenance`) de cada paquete verificado, y avisa antes del consentimiento si pedirá administrador o si es un paquete comunitario (ADR-0006).
 - Uso: con terminal, el gestor muestra progreso y avisos; sin terminal o con `--non-interactive`, WinGet no pregunta y falla en vez de colgarse.
 
 ## Siguiente acción
 
-1. **H3-1:** verificar VLC en WinGet y Flathub (IDs y fuentes oficiales con fecha), marcarlo `verified`, añadir sus entradas a `catalog/install-allowlist.yaml`, tests simulados y aceptación en dispositivo real. Ver backlog H3 en el [plan §10](../PLAN_TECNICO_SUITE_LIBRE.md#10-hoja-de-ruta-y-entregables).
+1. **Aceptación real de H3-1 (VLC)**, con los escenarios de [H2_LOCALSEND.md](H2_LOCALSEND.md#escenarios-de-aceptación-en-dispositivo-real) y además:
+   - Windows: `plan` muestra el aviso de administrador; `apply --app vlc --yes` desde terminal muestra UAC; cancelar UAC deja error visible y sin éxito falso; tras aceptar, VLC aparece en el menú Inicio y abre vídeos; segunda ejecución sin cambios; con `--non-interactive` se niega sin llamar a WinGet.
+   - Linux: `plan` muestra el aviso de paquete comunitario; la primera instalación puede descargar el runtime KDE (grande); `verify` y segunda ejecución sin cambios.
+   Registrar resultado aquí y fusionar la PR.
+2. **H3-2:** verificar LibreOffice con el mismo checklist de `AGENTS.md`. Ver backlog H3 en el [plan §10](../PLAN_TECNICO_SUITE_LIBRE.md#10-hoja-de-ruta-y-entregables).
 
 ## Limitaciones conocidas
 
@@ -51,4 +56,5 @@ No ejecutado / limitaciones: …
 Siguiente acción: …
 ```
 
+- **2026-11-11 · feat/h3-1-vlc · H3-1.** VLC verificado: WinGet `VideoLAN.VLC` (manifiesto 3.0.24 de `microsoft/winget-pkgs`, publisher VideoLAN, instaladores de download.videolan.org con SHA-256; solo ámbito máquina) y Flathub `org.videolan.VLC` (paquete comunitario no verificado por VideoLAN; compila desde el tarball oficial 3.0.24 con SHA-256). Decisión del mantenedor: Windows en ámbito máquina con UAC y Flathub comunitario aceptado (ADR-0006). Campos `scope`/`provenance` obligatorios y comparados en CI; ámbito máquina solo con terminal; avisos en plan y consentimiento. LocalSend registrado como `user`/`upstream` según sus manifiestos. Go test/vet (Linux; vet Windows) y 13 tests Python en verde. Corregido un test que usaba VLC con el runner real. No ejecutado: WinGet/Flatpak reales. Siguiente: aceptación real de VLC.
 - **2026-11-11 · feat/h2-embedded-catalog-generic-adapter · PR #3 · H2.** Catálogo y allowlist incrustados (ADR-0004); adaptador genérico WinGet/Flatpak; instalación visible con timeouts; detección de terminal por SO y `--non-interactive`; `next_step` en el plan; tests de CLI con proveedores simulados. Documentación y hitos reorientados (ADR-0005), `CLAUDE.md` y este fichero. Go test/vet (Linux y Windows) y tests Python en verde. Pruebas reales confirmadas por el usuario; CI en verde en Linux y Windows. Fusionada en main (squash). Siguiente: H3-1.
