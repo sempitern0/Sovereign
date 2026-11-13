@@ -91,11 +91,18 @@ func (s Store) now() time.Time {
 	return time.Now()
 }
 
-// Load returns the journal. A missing journal is empty. A corrupt one is moved
-// aside (never deleted) and an empty journal is returned with a non-nil warning.
-func (s Store) Load() (Journal, error) {
+// ErrUnreadableJournal means the journal exists but cannot be parsed.
+var ErrUnreadableJournal = errors.New("local journal is unreadable")
+
+// Path is the journal location, for messages.
+func (s Store) Path() string { return filepath.Join(s.Dir, journalFile) }
+
+// Peek reads the journal without ever modifying the filesystem. A missing
+// journal is empty; an unreadable one returns an empty journal and
+// ErrUnreadableJournal. Read-only commands such as `status` must use Peek.
+func (s Store) Peek() (Journal, error) {
 	empty := Journal{SchemaVersion: SchemaVersion, Entries: []Entry{}}
-	path := filepath.Join(s.Dir, journalFile)
+	path := s.Path()
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return empty, nil
@@ -112,11 +119,23 @@ func (s Store) Load() (Journal, error) {
 			return j, nil
 		}
 	}
+	return empty, ErrUnreadableJournal
+}
+
+// Load returns the journal for a writer. A missing journal is empty. A corrupt
+// one is moved aside (never deleted) and an empty journal is returned with a
+// non-nil warning.
+func (s Store) Load() (Journal, error) {
+	j, err := s.Peek()
+	if !errors.Is(err, ErrUnreadableJournal) {
+		return j, err
+	}
+	path := s.Path()
 	aside := fmt.Sprintf("%s.corrupt-%d", path, s.now().UTC().Unix())
 	if err := os.Rename(path, aside); err != nil {
-		return empty, fmt.Errorf("unreadable journal and cannot move it aside: %w", err)
+		return j, fmt.Errorf("unreadable journal and cannot move it aside: %w", err)
 	}
-	return empty, fmt.Errorf("unreadable journal moved to %s; starting a new one", filepath.Base(aside))
+	return j, fmt.Errorf("unreadable journal moved to %s; starting a new one", filepath.Base(aside))
 }
 
 // Record upserts entries by application and platform and writes atomically.

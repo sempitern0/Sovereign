@@ -25,7 +25,7 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 `PLAN_TECNICO_SUITE_LIBRE.md` is the product source of truth; accepted ADRs and code override it where they differ.
 
 ## Security invariants
-- `doctor`, `catalog list`, `profiles list` and `plan` are read-only. `verify` is read-only. Only `apply --app <id> --yes` and `apply --profile <id> --yes` change the host, and only for allowlisted applications; everything else fails closed.
+- `doctor`, `catalog list`, `profiles list`, `plan`, `status` and `verify` are read-only (`status` reads the journal with `state.Store.Peek`, never `Load`). Only `apply --app <id> --yes` and `apply --profile <id> --yes` change the host, and only for allowlisted applications; everything else fails closed.
 - Installation requires a `verified` catalog entry that matches `catalog/install-allowlist.yaml` field by field. The allowlist is embedded at build time and must never be read from `--root` or any runtime path. Adding an entry enables real installs: one application per reviewed PR, with real-device acceptance.
 - Never install `pending` or `unsupported` packages. Never treat `inspection_required` as proof of an installed package. Ambiguous provider output fails closed.
 - Package managers run with structured arguments, never through a shell. No remote-script pipelines, silent elevation, repository/remote additions, auto-accepted agreements, telemetry or destructive operations (no uninstall, cleanup or overwrite by default).
