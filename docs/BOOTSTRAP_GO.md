@@ -13,7 +13,7 @@ Estado: soporte inicial de desarrolladores, incluido en la PR H2. **No es necesa
 - No ejecuta scripts remotos. El binario de Go solo se ejecuta tras verificar hash y extraer el archivo oficial.
 - Archivos temporales se eliminan; la versión se instala en una ruta versionada y no pisa otras instalaciones. Una caché parcial o incompatible provoca un error explícito.
 - Al finalizar ejecuta `suitectl doctor`; el administrador puede usar después `suitectl plan`, `verify` o `apply` con sus propios requisitos de consentimiento.
-- `--offline` (Linux) / `-Offline` (Windows) impide descargar Go; también deshabilita la resolución online de módulos de Go. Si `gopkg.in/yaml.v3` aún no está en caché, `go run` fallará con un error claro. Para una experiencia offline sin módulos, se necesita un futuro binario de release o bundle local.
+- `--offline` (Linux) / `-Offline` (Windows) impide descargar Go; también deshabilita la resolución online de módulos de Go. Desde H4 las dependencias están vendorizadas (`vendor/`), así que la compilación funciona sin red ni caché de módulos.
 - No se instala el gestor de paquetes WinGet o Flatpak: su configuración permanece fuera del alcance y requiere autorización distinta.
 
 ## Ejemplos
