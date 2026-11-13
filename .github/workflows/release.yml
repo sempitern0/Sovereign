@@ -1,0 +1,119 @@
+name: Sovereign release
+# Reproducible release build (ADR-0008). Pull requests and pushes build twice
+# and require identical artifacts; only a v* tag signs and publishes them.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sovereign-release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+jobs:
+  build:
+    name: Build and check reproducibility
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Version
+        id: version
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [[ "$REF" == refs/tags/v* ]]; then
+            version="${REF_NAME#v}"
+          else
+            version="0.0.0-dev.${SHA:0:12}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Vendored dependencies are complete (no network)
+        env:
+          GOPROXY: 'off'
+        run: go build -mod=vendor ./...
+      - name: Build twice
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GOPROXY: 'off'
+        run: |
+          python tools/release.py --version "$VERSION" --out dist
+          python tools/release.py --version "$VERSION" --out dist-check
+          diff dist/SHA256SUMS dist-check/SHA256SUMS
+          (cd dist && sha256sum -c SHA256SUMS)
+      - name: Smoke test the Linux archive
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p smoke && tar -xzf "dist/suitectl_${VERSION}_linux_amd64.tar.gz" -C smoke
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/smoke/suitectl_${VERSION}_linux_amd64/suitectl" version --json
+          "$GITHUB_WORKSPACE/smoke/suitectl_${VERSION}_linux_amd64/suitectl" plan --profile essential --no-inspect --json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: suitectl-${{ steps.version.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+
+  attest:
+    name: Sign build provenance
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: suitectl-${{ needs.build.outputs.version }}
+          path: dist
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: dist/SHA256SUMS
+
+  publish:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: suitectl-${{ needs.build.outputs.version }}
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cat > notes.md <<EOF
+          suitectl ${VERSION}: Windows and Linux binaries (x86-64 and ARM64), SPDX SBOMs and SHA256SUMS.
+
+          Verify before running:
+          - sha256sum -c SHA256SUMS   (Windows: Get-FileHash <file> -Algorithm SHA256)
+          - gh attestation verify <archive> --repo ${GITHUB_REPOSITORY}
+
+          See README.md, section "Download a release".
+          EOF
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "suitectl $VERSION" --notes-file notes.md $prerelease

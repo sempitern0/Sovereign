@@ -24,7 +24,10 @@ jobs:
           cache: true
       - name: Go format
         shell: bash
-        run: test -z "$(gofmt -l cmd internal)"
+        run: test -z "$(gofmt -l cmd internal embed.go)"
+      - name: Vendor matches go.mod/go.sum
+        if: runner.os == 'Linux'
+        run: go mod vendor && git diff --exit-code -- vendor go.mod go.sum
       - name: Test
         run: go test ./...
       - name: Vet
