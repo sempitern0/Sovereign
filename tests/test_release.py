@@ -82,12 +82,13 @@ class ReleaseTests(unittest.TestCase):
 
     def test_sbom_is_spdx_with_dependencies(self):
         build = release.parse_go_version_m(GO_VERSION_M)
-        sbom = release.build_sbom("suitectl_0.3.0_linux_amd64", "0.3.0", "suitectl", "ab" * 32, build, 1763000000)
+        sbom = release.build_sbom("suitectl_0.3.0_linux_amd64", "0.3.0", "suitectl_0.3.0_linux_amd64.tar.gz", "suitectl", "ab" * 32, build, 1763000000)
         self.assertEqual(sbom["spdxVersion"], "SPDX-2.3")
         self.assertEqual(sbom["creationInfo"]["created"], "2025-11-13T02:13:20Z")
         names = [p["name"] for p in sbom["packages"]]
         self.assertEqual(names, ["suitectl", "golang/stdlib", "gopkg.in/yaml.v3"])
         self.assertEqual(sbom["packages"][0]["checksums"][0], {"algorithm": "SHA256", "checksumValue": "ab" * 32})
+        self.assertEqual(sbom["packages"][0]["downloadLocation"], "https://github.com/sempitern0/Sovereign/releases/download/v0.3.0/suitectl_0.3.0_linux_amd64.tar.gz")
         ids = {p["SPDXID"] for p in sbom["packages"]}
         self.assertEqual(len(ids), 3)
         depends = [r for r in sbom["relationships"] if r["relationshipType"] == "DEPENDS_ON"]

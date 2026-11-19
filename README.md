@@ -4,7 +4,7 @@
 
 Sovereign aims to prepare everyday devices with declarative catalogs, profiles and trusted package managers. Local apps and data must remain usable without Internet or a NAS. [Multisuite](https://github.com/sempitern0/Multisuite) is an **optional future connector**, not a dependency.
 
-## Current state: H0–H3 complete in code, H4 (distributable release) in progress
+## Current state: H0–H3 implemented, H4 release pipeline merged (publication pending)
 
 Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
@@ -19,9 +19,11 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 - `status [--profile essential] [--json]` compares, per application, what the profile wants, what the package manager reports now and the last result in the journal, and points out drift (for example an app removed outside Sovereign). It is read-only.
 - Blocked plan entries include a `next_step` with the exact action to take (for example, how to install a missing package manager).
 
-`apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no prebuilt release yet (milestone H4): run from a clone with the bootstrap below.
+`apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no published release yet: run from a clone with the bootstrap below; the release pipeline is prepared for a future version tag.
 
 ## Download a release
+
+**Release status (2026-11-19):** the reproducible build pipeline is merged, but no version has been published yet. Use the source checkout instructions below until a signed release is published. Do not treat the examples below as existing downloads.
 
 Each tagged release ships `suitectl` for Windows and Linux (x86-64 and ARM64) with no runtime to install: `.zip` for Windows, `.tar.gz` for Linux, an SPDX SBOM per archive and `SHA256SUMS`. Builds are reproducible and their provenance is signed by this repository's release workflow ([ADR-0008](docs/architecture/adr/0008-reproducible-release.md)).
 

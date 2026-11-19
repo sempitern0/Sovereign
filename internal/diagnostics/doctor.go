@@ -1,7 +1,6 @@
 package diagnostics
 
 import (
-	"os"
 	"os/exec"
 	"runtime"
 )
@@ -15,8 +14,16 @@ type Report struct {
 	MultisuiteRequired bool            `json:"multisuite_required"`
 }
 
+// Detect reports only package managers currently supported by the local OS.
+// Future provider implementations should explicitly extend this list.
 func Detect() Report {
-	names := []string{"winget", "flatpak", "apt-get", "dnf"}
+	names := []string{}
+	switch runtime.GOOS {
+	case "windows":
+		names = []string{"winget"}
+	case "linux":
+		names = []string{"flatpak"}
+	}
 	providers := make(map[string]bool, len(names))
 	for _, name := range names {
 		_, err := exec.LookPath(name)
@@ -24,5 +31,3 @@ func Detect() Report {
 	}
 	return Report{SchemaVersion: 1, Platform: runtime.GOOS, Architecture: runtime.GOARCH, Providers: providers, MultisuiteRequired: false}
 }
-
-func IsOffline() bool { return os.Getenv("SOVEREIGN_OFFLINE") == "1" }
