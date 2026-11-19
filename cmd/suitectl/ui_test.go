@@ -1,9 +1,9 @@
 package main
 
 import (
+	"runtime"
 	"strings"
 	"testing"
-	"runtime"
 )
 
 func TestConciseHumanOutputWhenProfileIsComplete(t *testing.T) {
