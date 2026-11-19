@@ -99,14 +99,14 @@ def spdx_id(text: str) -> str:
     return "SPDXRef-Package-" + re.sub(r"[^A-Za-z0-9.-]", "-", text)
 
 
-def build_sbom(base: str, version: str, binary_name: str, binary_sha256: str, build: dict, epoch: int) -> dict:
+def build_sbom(base: str, version: str, archive_name: str, binary_name: str, binary_sha256: str, build: dict, epoch: int) -> dict:
     created = datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     main_id = "SPDXRef-Package-suitectl"
     packages = [{
         "SPDXID": main_id,
         "name": "suitectl",
         "versionInfo": version,
-        "downloadLocation": f"{REPO_URL}/releases/download/v{version}/{base}",
+        "downloadLocation": f"{REPO_URL}/releases/download/v{version}/{archive_name}",
         "filesAnalyzed": False,
         "licenseConcluded": "MIT",
         "licenseDeclared": "MIT",
@@ -170,7 +170,7 @@ def release(version: str, commit: str, epoch: int, out: Path, targets: tuple[str
             archive = out / (base + (".zip" if target.startswith("windows/") else ".tar.gz"))
             (write_zip if archive.suffix == ".zip" else write_tar_gz)(archive, members, epoch)
             build = parse_go_version_m(run(["go", "version", "-m", str(binary)]))
-            sbom = build_sbom(base, version, binary.name, sha256(binary), build, epoch)
+            sbom = build_sbom(base, version, archive.name, binary.name, sha256(binary), build, epoch)
             sbom_path = out / f"{base}.spdx.json"
             sbom_path.write_text(json.dumps(sbom, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             produced += [archive, sbom_path]
