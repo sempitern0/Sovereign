@@ -103,7 +103,9 @@ func run(args []string) int {
 			}
 			fmt.Printf("  %-10s %s\n", name, status)
 		}
-		if *verbose { fmt.Println("Multisuite: optional; no connection attempted") }
+		if *verbose {
+			fmt.Println("Multisuite: optional; no connection attempted")
+		}
 		return 0
 	case "catalog", "profiles":
 		if len(args) < 2 || args[1] != "list" {
