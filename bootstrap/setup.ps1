@@ -4,7 +4,8 @@
 param(
     [switch]$Json,
     [switch]$Offline,
-    [switch]$NoPath
+    [switch]$NoPath,
+    [string[]]$RunArguments = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -118,8 +119,14 @@ Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
     $env:GOTOOLCHAIN = 'local'
     if ($Offline) { $env:GOPROXY = 'off' }
-    $goArgs = @('run', './cmd/suitectl', 'doctor')
-    if ($Json) { $goArgs += '--json' }
+    $commandArgs = @($RunArguments)
+    if ($commandArgs.Count -eq 0) {
+        $commandArgs = @('doctor')
+        if ($Json) { $commandArgs += '--json' }
+    } elseif ($Json) {
+        throw '-Json is only valid when no command is supplied; pass --json to the command instead.'
+    }
+    $goArgs = @('run', './cmd/suitectl') + $commandArgs
     & $GoExecutable @goArgs
     $exitCode = $LASTEXITCODE
 } finally {

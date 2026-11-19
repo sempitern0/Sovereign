@@ -42,10 +42,12 @@ jobs:
           if [ "${{ runner.os }}" = "Linux" ]; then
             sh -n bootstrap/setup.sh
             sh bootstrap/setup.sh --json
+            sh sovereign.sh version --json
           else
             pwsh -NoProfile -Command '$tokens = $null; $parseErrors = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) "bootstrap/setup.ps1"), [ref]$tokens, [ref]$parseErrors); if ($parseErrors.Count -gt 0) { throw ($parseErrors -join "; ") }'
             pwsh -NoProfile -File tests/bootstrap_path.ps1
             pwsh -NoProfile -File bootstrap/setup.ps1 -Json
+            pwsh -NoProfile -File sovereign.ps1 version --json
           fi
       - name: H2 fail-closed test
         shell: bash

@@ -134,43 +134,57 @@ func statusNote(app AppStatus, op planner.Operation, profileID string) (string, 
 	return "", op.NextStep
 }
 
-func printStatus(r StatusReport) {
-	fmt.Printf("Status: profile=%s platform=%s\n", r.Profile, r.Platform)
+func printStatus(r StatusReport, verbose bool) {
+	installed, missing, problems := 0, 0, 0
 	for _, a := range r.Applications {
-		required := "required"
-		if !a.Required {
-			required = "optional"
-		}
-		fmt.Printf("  %-16s %-9s %-17s", a.Application, required, a.Observed)
-		if a.LastResult != "" {
-			last := a.LastResult
-			if a.LastErrorClass != "" {
-				last += "/" + a.LastErrorClass
+		if a.Required {
+			switch a.Observed {
+			case observedInstalled:
+				installed++
+			case observedMissing:
+				missing++
+			case observedUnknown, observedProviderMissing:
+				problems++
 			}
-			fmt.Printf(" last: %s (%s)", last, a.LastUpdated)
 		}
-		fmt.Println()
+	}
+	fmt.Printf("Status %s (%s): %d installed, %d missing, %d issues\n", r.Profile, r.Platform, installed, missing, problems)
+	for _, a := range r.Applications {
+		if !verbose && a.Observed == observedInstalled && a.LastErrorClass == "" {
+			continue
+		}
+		fmt.Printf("  %-16s %s\n", a.Application, a.Observed)
+		if verbose {
+			if a.LastResult != "" {
+				fmt.Printf("    Last: %s (%s)\n", a.LastResult, a.LastUpdated)
+			}
+			if a.LastErrorClass != "" {
+				fmt.Printf("    Last error: %s\n", a.LastErrorClass)
+			}
+		}
 		for _, line := range []string{a.Detail, a.Note} {
-			if line != "" {
-				fmt.Printf("  %-16s %-9s %-17s %s\n", "", "", "", line)
+			if line != "" && (verbose || a.Observed != observedInstalled || a.LastErrorClass != "") {
+				fmt.Printf("    %s\n", line)
 			}
 		}
 		if a.NextStep != "" {
-			fmt.Printf("  %-16s %-9s %-17s -> %s\n", "", "", "", a.NextStep)
+			fmt.Printf("    Next: %s\n", a.NextStep)
 		}
 	}
-	for _, e := range r.OtherRecorded {
-		fmt.Printf("  (recorded, not in profile) %s: %s (%s)\n", e.Application, e.Result, e.UpdatedAt)
+	if verbose {
+		for _, e := range r.OtherRecorded {
+			fmt.Printf("  (recorded, outside profile) %s: %s (%s)\n", e.Application, e.Result, e.UpdatedAt)
+		}
+		if r.Journal != "" {
+			fmt.Println("Journal:", r.Journal)
+		}
 	}
 	for _, w := range r.Warnings {
 		fmt.Fprintln(os.Stderr, "Warning:", w)
 	}
 	if r.Complete {
-		fmt.Println("Profile complete: every installable required application is present.")
+		fmt.Println("Profile complete.")
 	} else {
-		fmt.Println("Profile incomplete: see the entries above.")
-	}
-	if r.Journal != "" {
-		fmt.Println("Journal:", r.Journal)
+		fmt.Println("Profile incomplete: review missing or failed applications above.")
 	}
 }

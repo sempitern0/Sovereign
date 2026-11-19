@@ -79,6 +79,7 @@ func run(args []string) int {
 		fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
 		machine := fs.Bool("json", false, "Print machine-readable diagnostics")
+		verbose := fs.Bool("verbose", false, "Show diagnostic details")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -102,7 +103,7 @@ func run(args []string) int {
 			}
 			fmt.Printf("  %-10s %s\n", name, status)
 		}
-		fmt.Println("Multisuite: optional (no connection attempted)")
+		if *verbose { fmt.Println("Multisuite: optional; no connection attempted") }
 		return 0
 	case "catalog", "profiles":
 		if len(args) < 2 || args[1] != "list" {
@@ -173,6 +174,7 @@ func run(args []string) int {
 		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
 		profile := fs.String("profile", "essential", "Profile to compare against this device")
 		machine := fs.Bool("json", false, "Machine-readable status (schema_version 1)")
+		verbose := fs.Bool("verbose", false, "Show journal, history and per-application details")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -190,7 +192,7 @@ func run(args []string) int {
 		if *machine {
 			return printJSON(report)
 		}
-		printStatus(report)
+		printStatus(report, *verbose)
 		return 0
 	case "plan":
 		fs := flag.NewFlagSet("plan", flag.ContinueOnError)
@@ -200,6 +202,7 @@ func run(args []string) int {
 		platform := fs.String("platform", runtime.GOOS, "Target platform (windows, linux, android)")
 		machine := fs.Bool("json", false, "Versioned JSON plan")
 		noInspect := fs.Bool("no-inspect", false, "Skip local package inspection and preserve deterministic H1 output")
+		verbose := fs.Bool("verbose", false, "Show all operations and package metadata")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -228,7 +231,7 @@ func run(args []string) int {
 		if *machine {
 			return printJSON(plan)
 		}
-		printPlan(plan, "Read-only plan")
+		printPlan(plan, "Plan", *verbose)
 		return 0
 	case "apply", "verify":
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
@@ -239,6 +242,7 @@ func run(args []string) int {
 		yes := fs.Bool("yes", false, "Explicitly authorize installation")
 		machine := fs.Bool("json", false, "Machine-readable verification result")
 		nonInteractive := fs.Bool("non-interactive", false, "Never attach the package manager to the terminal; WinGet prompts are disabled")
+		verbose := fs.Bool("verbose", false, "Show individual applications and plan details")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 2
 		}
@@ -266,7 +270,7 @@ func run(args []string) int {
 		}
 		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
 		if *profile != "" {
-			return applyProfile(c, *profile, *yes, engine)
+			return applyProfile(c, *profile, *yes, engine, *verbose)
 		}
 		target, err := engine.Resolve(c, *app, runtime.GOOS)
 		if err != nil {
@@ -351,15 +355,40 @@ func run(args []string) int {
 // loadCatalog uses the catalog compiled into the binary unless a development
 // checkout is given explicitly with --root.
 // printPlan prints plan entries with their notices and next steps.
-func printPlan(plan planner.Plan, title string) {
-	fmt.Printf("%s: profile=%s platform=%s\n", title, plan.Profile, plan.Platform)
+func printPlan(plan planner.Plan, title string, verbose bool) {
+	installed := 0
+	pending := 0
+	other := 0
 	for _, op := range plan.Operations {
-		fmt.Printf("  %-16s %-22s %s\n", op.Application, op.Status, op.Reason)
-		for _, notice := range op.Notices() {
-			fmt.Printf("  %-16s %-22s !  %s\n", "", "", notice)
+		if op.Status == "installed" {
+			installed++
+		} else if op.Required && (op.Status == "not_installed" || op.Status == "inspection_required") {
+			pending++
+		} else if op.Required {
+			other++
+		}
+	}
+	fmt.Printf("%s %s (%s): %d installed, %d to review\n", title, plan.Profile, plan.Platform, installed, pending+other)
+	for _, op := range plan.Operations {
+		if !verbose && op.Status == "installed" {
+			continue
+		}
+		fmt.Printf("  %-16s %s\n", op.Application, op.Status)
+		if !verbose && op.Status != "not_installed" && op.Status != "inspection_failed" &&
+			op.Status != "provider_unavailable" && op.Status != "pending_verification" && op.Status != "unsupported" {
+			continue
+		}
+		if op.Reason != "" {
+			fmt.Printf("    %s\n", op.Reason)
+		}
+		// Approval/UAC notices only matter when an actual installation is required.
+		if op.Status == "not_installed" || (verbose && op.Status != "installed") {
+			for _, notice := range op.Notices() {
+				fmt.Printf("    ! %s\n", notice)
+			}
 		}
 		if op.NextStep != "" {
-			fmt.Printf("  %-16s %-22s -> %s\n", "", "", op.NextStep)
+			fmt.Printf("    Next: %s\n", op.NextStep)
 		}
 	}
 }
@@ -405,10 +434,10 @@ func usage() {
 	fmt.Println("Usage: suitectl doctor [--json] | version [--json]")
 	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json]")
 	fmt.Println("       suitectl profiles list [--json]")
-	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect]")
+	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--verbose] [--no-inspect]")
 	fmt.Println("       suitectl verify --app localsend [--json]")
 	fmt.Println("       suitectl apply --app <id> --yes [--non-interactive] (consent required)")
-	fmt.Println("       suitectl apply --profile essential --yes [--non-interactive] (one consent for the shown plan)")
-	fmt.Println("       suitectl status [--profile essential] [--json] (read-only: desired vs observed vs recorded)")
+	fmt.Println("       suitectl apply --profile essential --yes [--verbose] [--non-interactive]")
+	fmt.Println("       suitectl status [--profile essential] [--json] [--verbose]")
 	fmt.Println("The catalog is embedded; --root <checkout> reads a development copy instead.")
 }

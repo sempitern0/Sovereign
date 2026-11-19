@@ -90,7 +90,7 @@ func TestStatusCompleteWhenEverythingIsInstalled(t *testing.T) {
 		t.Fatalf("expected complete: %+v", r)
 	}
 	code, out := captureStdout(t, func() int { return run([]string{"status"}) })
-	if code != 0 || !strings.Contains(out, "Profile complete") || !strings.Contains(out, "Journal:") {
+	if code != 0 || !strings.Contains(out, "Profile complete") || strings.Contains(out, "Journal:") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 }
