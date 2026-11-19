@@ -68,3 +68,9 @@ Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is r
 - Human-readable defaults must summarize success and show only actionable warnings. Keep `--verbose` for diagnostics and preserve existing versioned JSON contracts.
 - `sovereign.ps1` and `sovereign.sh` are the one-command entrypoints from a clone; they must reuse compatible Go or bootstrap a SHA256-pinned per-user toolchain without elevation. Release binaries must not require Go.
 - Never hide installation errors, package manager prompts, administrator approval or consent requirements.
+
+## Interactive wizard
+
+- The no-argument launchers open `wizard` only when stdin/stdout are real terminals. Explicit commands remain scriptable; `--json` contract and exit codes are unchanged.
+- Profile and single-app installation require a separate explicit `SI` confirmation after showing the plan and risk metadata. Never silently install software when a selection or number is entered.
+- Keep a pure, testable input/output boundary; do not add external TUI packages or rely on ANSI support.

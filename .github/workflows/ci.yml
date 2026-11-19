@@ -32,6 +32,8 @@ jobs:
         run: go test ./...
       - name: Vet
         run: go vet ./...
+      - name: Wizard interaction tests
+        run: go test ./cmd/suitectl -run '^TestWizard' -count=1
       - name: Build
         run: go build ./cmd/suitectl
       - name: Plan smoke test

@@ -6,6 +6,7 @@ param(
     [string[]]$CommandArgs = @()
 )
 $ErrorActionPreference = 'Stop'
+if ($CommandArgs.Count -eq 0) { $CommandArgs = @('wizard') }
 $bootstrap = Join-Path $PSScriptRoot 'bootstrap/setup.ps1'
 & $bootstrap -RunArguments $CommandArgs
 exit $LASTEXITCODE

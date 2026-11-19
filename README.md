@@ -21,6 +21,35 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
 `apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no published release yet: run from a clone with the bootstrap below; the release pipeline is prepared for a future version tag.
 
+## Interactive assistant
+
+Launch **without arguments** to choose a profile, inspect its installation plan,
+install missing applications with a separate explicit confirmation, check status,
+install an individually reviewed app, browse the catalog or diagnose the host.
+
+```powershell
+# Windows: choose from a numbered menu (no Go or Git commands needed)
+.\sovereign.ps1
+```
+
+```sh
+# Linux: same menu
+sh sovereign.sh
+```
+
+The assistant is written in Go's standard library (no terminal UI dependencies or
+ANSI color requirements), uses the embedded catalog and reuses the existing
+consent-gated CLI. **Selecting a profile does not install anything**: the plan is
+displayed first, and installation requires entering `SI`. Profiles without
+installable definitions are clearly marked as in preparation. In unattended
+environments, use explicit `plan`, `status` or `apply` commands; the assistant
+requires an interactive terminal. A binary release will not need Git or Go.
+
+Git is not installed by the launcher: users can clone with Git, download a ZIP, or
+later download a standalone release. Go is only bootstrapped if running from
+source and no compatible version is available. Running the prebuilt binary will
+not need Go. Multisuite remains optional.
+
 ## Quick start (from a clone)
 
 One command runs Sovereign on Windows or Linux. The launcher reuses a compatible Go installation or securely installs the pinned official toolchain **for the current user**, then executes the command. No administrator privileges are requested just to run Sovereign.

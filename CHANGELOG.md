@@ -2,6 +2,8 @@
 
 ## Unreleased — H3 + H4
 
+- Added keyboard-accessible, dependency-free interactive assistant for profile selection, preview, explicit installation confirmation, status, single reviewed app, catalog and diagnostics; default launchers open it without arguments.
+
 - Terminal UX: concise default plan/status/apply output, actionable warnings only for missing software, details via `--verbose`, JSON unchanged; portable `sovereign.ps1` / `sovereign.sh` wrappers with automatic Go bootstrap.
 
 - Maintenance after H4-1: platform-aware provider diagnostics (`winget` only on Windows and `flatpak` only on Linux), remove unused offline helper, simplify Git attributes to the actual repository formats, pin CI actions to verified SHAs, correct the SPDX package download link to the actual release archive, and align release/status documentation with merged code.
