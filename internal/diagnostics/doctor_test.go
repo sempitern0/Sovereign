@@ -13,7 +13,23 @@ func TestDetect(t *testing.T) {
 	if d.MultisuiteRequired {
 		t.Fatal("multisuite must be optional")
 	}
-	if len(d.Providers) != 4 {
-		t.Fatal("missing provider checks")
+	expected := ""
+	switch runtime.GOOS {
+	case "windows":
+		expected = "winget"
+	case "linux":
+		expected = "flatpak"
+	}
+	if expected == "" {
+		if len(d.Providers) != 0 {
+			t.Fatalf("unsupported OS must have no providers: %+v", d.Providers)
+		}
+		return
+	}
+	if len(d.Providers) != 1 {
+		t.Fatalf("expected only the implemented provider on %s, got %+v", runtime.GOOS, d.Providers)
+	}
+	if _, ok := d.Providers[expected]; !ok {
+		t.Fatalf("missing expected provider %s", expected)
 	}
 }

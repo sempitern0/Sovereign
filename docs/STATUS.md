@@ -2,7 +2,7 @@
 
 Fuente única del estado del proyecto y de la **siguiente acción**. Actualizarla al final de cada iteración (ver «Registro de iteración»). El chat o la memoria de un agente no son el registro del proyecto.
 
-Última actualización: 2026-11-11.
+Última actualización: 2026-11-19.
 
 ## Hitos
 
@@ -14,7 +14,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 | H1 — Planificación | Completado | `plan` determinista y JSON v1; tests de alternativas, dependencias e incompatibilidades |
 | H2 — Primera instalación (LocalSend) | Completado | PR #2 y PR #3 fusionadas. CI de PR #3 en verde en ubuntu-latest y windows-latest (Go, catálogo). **El usuario confirma pruebas reales (2026-11-11)**; no se han adjuntado registros |
 | H3 — Perfil esencial instalable | Completo en código; aceptación real parcial | H3-1 a H3-4 fusionadas (PR #4–#7). En Windows real solo consta la **detección** de VLC y LibreOffice ya instalados; falta la instalación real del perfil en un equipo limpio (Windows y Linux) |
-| H4 — Primera release distribuible | En curso | H4-1 (build reproducible, SBOM, procedencia firmada, workflow) en revisión. H4-2 (bootstrap que descarga y verifica la release) pendiente |
+| H4 — Primera release distribuible | En curso | H4-1 fusionado (PR #8; 2026-11-19). Generación reproducible de binarios/SBOM verificada por CI; sin etiqueta, publicación ni comprobación de attestation reales. H4-2 (bootstrap con release verificada) pendiente |
 | H5 — Datos y portabilidad | Pendiente | — |
 | H6 — Android guiado | Pendiente | — |
 | H7 — Kits offline | Pendiente | — |
@@ -37,7 +37,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Siguiente acción
 
-1. **Revisar y fusionar H4-1** (rama `feat/h4-1-release`): la CI del PR ejecuta el workflow de release en modo prueba (compila dos veces y exige artefactos idénticos; no publica).
+1. **Revisar la integración en `main`** de H4-1 (PR #8 ya fusionada): comprobar la CI de `main`, repetibilidad de las compilaciones y salud del catálogo. La publicación de una versión etiquetada todavía no se ha probado.
 2. **Publicar la primera release** cuando el mantenedor lo decida: `git tag -a v0.4.0 -m "suitectl 0.4.0" && git push origin v0.4.0` (o `v0.4.0-rc.1` para una pre-release). El workflow firma la procedencia y crea la release. Verificarla con las instrucciones del README («Download a release») y registrar aquí el resultado.
 3. **Aceptación real del perfil** en un equipo sin VLC ni LibreOffice, idealmente ya con el binario de la release (sin Git ni Go):
 
@@ -72,7 +72,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Limitaciones conocidas
 
-- Aún no se ha publicado ninguna release: la primera sale al crear una etiqueta `v*` (decisión del mantenedor). Hasta entonces, bootstrap con Go de usuario o compilar (ya funciona sin red gracias a `vendor/`).
+- Aún no se ha publicado ninguna release: la primera sale al crear una etiqueta `v*` (decisión del mantenedor). La PR #8 está fusionada y la CI verificó la compilación reproducible, pero todavía no la firma/publicación desde un tag real. Hasta entonces, bootstrap con Go de usuario o compilar (ya funciona sin red gracias a `vendor/`).
 - Los binarios no llevan firma Authenticode; SmartScreen puede avisar en Windows. La autenticidad se verifica con `gh attestation verify`.
 - La QA real del bootstrap de Go en equipos limpios (checklist de `BOOTSTRAP_GO.md`) no consta como realizada.
 - La detección «no instalado» de WinGet conserva un texto en inglés solo como respaldo; la señal principal es el código de salida.
@@ -89,6 +89,7 @@ No ejecutado / limitaciones: …
 Siguiente acción: …
 ```
 
+- **2026-11-19 · main · H4-1 fusionada (PR #8).** Binarios reproducibles y SBOM para Windows/Linux x86-64/ARM64 integrados. CI de la rama de PR verde; publicación y attestation reales no comprobadas. Limpieza posterior: diagnóstico limitado a gestores soportados por plataforma, retirada de función muerta `IsOffline`, simplificación de `.gitattributes` y acciones de CI fijadas por SHA. Se conserva documentación de arquitectura, licencias y fuentes vendorizadas. Próximo paso: QA desde máquinas limpias y primera release cuando proceda.
 - **2026-11-13 · feat/h4-1-release · H4-1.** `vendor/` con `gopkg.in/yaml.v3` v3.0.1 (hash idéntico al de `go.sum`; obtenido del repositorio oficial vía proxy local porque el proxy de Go no es accesible desde el entorno del agente; la CI lo regenera desde el proxy oficial y exige cero diferencias). Compilación y tests sin red con caché vacía. `suitectl version [--json]` con versión y commit inyectados. `tools/release.py`: 4 objetivos, archivos deterministas, SBOM SPDX 2.3 y SHA256SUMS; dos compilaciones locales independientes dieron artefactos idénticos; binario extraído ejecutado fuera del repositorio. Workflow `release.yml`: acciones fijadas por SHA (entradas comprobadas en cada `action.yml`), jobs con mínimo privilegio, publicación solo con etiqueta `v*` tras firmar la procedencia (ADR-0008). Tests: 8 de Python para la herramienta de release y 1 de Go para `version`. No ejecutado: el workflow en GitHub con etiqueta (no se ha publicado ninguna release) ni la verificación con `gh attestation verify`.
 - **2026-11-13 · main · H3-4 fusionada (PR #7).**
 - **2026-11-11 · feat/h3-4-status · H3-4.** `status [--profile] [--json]` de solo lectura: por app, estado observado, último resultado registrado y nota de deriva (registrado como instalado pero ya no presente, último intento fallido, instalado fuera de Sovereign) con siguiente paso; `complete` en JSON (`schema_version` 1); entradas del journal fuera del perfil en `other_recorded`. `state.Store.Peek` lee sin tocar el disco; `Load` se apoya en él. Tests con proveedores simulados, incluido que `status` no modifica el directorio de estado ni ejecuta comandos de instalación (mutación `Peek`→`Load` detectada). Go test/vet en verde. No ejecutado: proveedores reales.
