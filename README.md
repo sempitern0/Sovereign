@@ -10,7 +10,7 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
 - Go CLI: `suitectl doctor [--json]`, `catalog list`, `profiles list`, `plan --profile essential [--json]`, and `version`.
 - Versioned YAML application catalog and profiles, JSON Schema v1 with semantic validation.
-- LocalSend verified for Windows/WinGet and Linux/Flatpak with pinned package IDs and official source references; VLC and LibreOffice remain pending.
+- LocalSend, VLC and LibreOffice have reviewed Windows/WinGet and Linux/Flatpak identities; **real-device first-install acceptance is still pending for VLC and LibreOffice**.
 - Dependency-aware, platform-specific deterministic planning with blocked/unverified status and explicit alternative choices.
 - Windows/Linux CI, Go tests and negative catalog tests.
 - `apply --app <id> --yes` and `verify --app <id>` work on the host OS for allowlisted apps only (LocalSend, VLC, LibreOffice). Other apps and Android remain blocked; `plan` is read-only.
@@ -20,6 +20,32 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 - Blocked plan entries include a `next_step` with the exact action to take (for example, how to install a missing package manager).
 
 `apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no published release yet: run from a clone with the bootstrap below; the release pipeline is prepared for a future version tag.
+
+## Quick start (from a clone)
+
+One command runs Sovereign on Windows or Linux. The launcher reuses a compatible Go installation or securely installs the pinned official toolchain **for the current user**, then executes the command. No administrator privileges are requested just to run Sovereign.
+
+```powershell
+# Windows PowerShell
+.\sovereign.ps1 status
+.\sovereign.ps1 plan --profile essential
+.\sovereign.ps1 apply --profile essential
+# Only authorize if the plan shows missing applications:
+.\sovereign.ps1 apply --profile essential --yes
+```
+
+```sh
+# Linux
+sh sovereign.sh status
+sh sovereign.sh plan --profile essential
+sh sovereign.sh apply --profile essential
+# Only authorize missing applications after reviewing the plan:
+sh sovereign.sh apply --profile essential --yes
+```
+
+For troubleshooting use `--verbose`; for automations use `--json` on read-only commands. Without `--verbose`, completed applications and non-actionable warnings are omitted from terminal output. JSON schema and security checks are unchanged. Linux supports `sh sovereign.sh --offline status` if the required toolchain and vendored modules are already available.
+
+**Distribution note:** launchers execute Go source and may need network access on first use. The release pipeline for standalone executables is implemented but **no tagged release has been published**. When releases are available, extracted binaries run directly without Go or a checkout.
 
 ## Download a release
 

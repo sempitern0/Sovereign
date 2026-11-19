@@ -2,6 +2,8 @@
 
 ## Unreleased — H3 + H4
 
+- Terminal UX: concise default plan/status/apply output, actionable warnings only for missing software, details via `--verbose`, JSON unchanged; portable `sovereign.ps1` / `sovereign.sh` wrappers with automatic Go bootstrap.
+
 - Maintenance after H4-1: platform-aware provider diagnostics (`winget` only on Windows and `flatpak` only on Linux), remove unused offline helper, simplify Git attributes to the actual repository formats, pin CI actions to verified SHAs, correct the SPDX package download link to the actual release archive, and align release/status documentation with merged code.
 
 - H4-1: vendored dependencies (offline builds, CI checks `vendor/` against `go.sum`); `suitectl version [--json]` with version and commit injected at build time; `tools/release.py` builds reproducible Windows/Linux x86-64/ARM64 archives with SPDX SBOMs and SHA256SUMS; release workflow builds twice on every PR and, on `v*` tags, signs SLSA provenance with `actions/attest` and publishes a GitHub release (ADR-0008).

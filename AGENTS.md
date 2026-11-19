@@ -62,3 +62,9 @@ Catalog edits are embedded at build time: test them with `--root .` or rebuild.
 
 ## Definition of done
 Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is recorded in STATUS; contract changes are versioned or additive; security invariants reviewed; error paths implemented and tested; no secrets in logs; reproducible commands listed; remaining risks explicit. Distinguish *implemented*, *validated with simulated providers* and *validated on real devices*.
+
+## Terminal UX contracts
+
+- Human-readable defaults must summarize success and show only actionable warnings. Keep `--verbose` for diagnostics and preserve existing versioned JSON contracts.
+- `sovereign.ps1` and `sovereign.sh` are the one-command entrypoints from a clone; they must reuse compatible Go or bootstrap a SHA256-pinned per-user toolchain without elevation. Release binaries must not require Go.
+- Never hide installation errors, package manager prompts, administrator approval or consent requirements.

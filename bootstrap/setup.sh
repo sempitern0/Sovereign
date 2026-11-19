@@ -5,14 +5,19 @@ set -eu
 
 go_version='1.27.3'
 offline=0
-json=0
-for option in "$@"; do
-  case "$option" in
-    --json) json=1 ;;
-    --offline) offline=1 ;;
-    *) printf 'Unknown bootstrap option: %s\n' "$option" >&2; exit 2 ;;
-  esac
-done
+if [ "${1-}" = "--offline" ]; then
+  offline=1
+  shift
+fi
+# Retain the legacy setup.sh --json (doctor JSON) interface.
+if [ "$#" -eq 0 ]; then
+  set -- doctor
+elif [ "$#" -eq 1 ] && [ "$1" = "--json" ]; then
+  set -- doctor --json
+elif [ "$#" -eq 2 ] && [ "$1" = "--json" ] && [ "$2" = "--offline" ]; then
+  offline=1
+  set -- doctor --json
+fi
 
 if [ "$(uname -s)" != 'Linux' ]; then
   printf '%s\n' 'This bootstrap supports Linux only; use setup.ps1 on Windows.' >&2
@@ -119,13 +124,7 @@ fi
 
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$project_dir"
-if [ "$json" -eq 1 ]; then
-  if [ "$offline" -eq 1 ]; then
-    exec env GOTOOLCHAIN=local GOPROXY=off "$go_bin" run ./cmd/suitectl doctor --json
-  fi
-  exec env GOTOOLCHAIN=local "$go_bin" run ./cmd/suitectl doctor --json
-fi
 if [ "$offline" -eq 1 ]; then
-  exec env GOTOOLCHAIN=local GOPROXY=off "$go_bin" run ./cmd/suitectl doctor
+  exec env GOTOOLCHAIN=local GOPROXY=off "$go_bin" run ./cmd/suitectl "$@"
 fi
-exec env GOTOOLCHAIN=local "$go_bin" run ./cmd/suitectl doctor
+exec env GOTOOLCHAIN=local "$go_bin" run ./cmd/suitectl "$@"

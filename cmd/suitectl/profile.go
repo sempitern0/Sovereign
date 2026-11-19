@@ -37,7 +37,7 @@ func (o profileOutcome) incomplete() bool {
 // profile after a single consent covering the plan it prints first. It keeps
 // going after a failure, skips applications whose dependencies failed, and
 // returns 1 if the profile is incomplete, 3 if consent is missing.
-func applyProfile(c catalog.Catalog, profileID string, consent bool, engine install.Engine) int {
+func applyProfile(c catalog.Catalog, profileID string, consent bool, engine install.Engine, verbose bool) int {
 	ctx := context.Background()
 	plan, err := planner.Build(c, profileID, planner.Device{Platform: runtime.GOOS, Providers: detectProviders()})
 	if err != nil {
@@ -45,7 +45,7 @@ func applyProfile(c catalog.Catalog, profileID string, consent bool, engine inst
 	}
 	plan = planner.LocalizeDependencies(plan, runtime.GOARCH)
 	plan = inspectPlan(ctx, c, plan, engine)
-	printPlan(plan, "Installation plan")
+	printPlan(plan, "Install", verbose)
 
 	var missing []string
 	for _, op := range plan.Operations {
@@ -116,7 +116,7 @@ func applyProfile(c catalog.Catalog, profileID string, consent bool, engine inst
 		outcomes = append(outcomes, outcome)
 	}
 	recordJournal(journal)
-	return printProfileSummary(profileID, outcomes)
+	return printProfileSummary(profileID, outcomes, verbose)
 }
 
 // failedDependency returns the first dependency of app that did not install.
@@ -151,19 +151,20 @@ func recordJournal(entries []state.Entry) {
 	}
 }
 
-func printProfileSummary(profileID string, outcomes []profileOutcome) int {
+func printProfileSummary(profileID string, outcomes []profileOutcome, verbose bool) int {
 	counts := map[string]int{}
-	fmt.Printf("\nSummary for profile %s:\n", profileID)
 	for _, o := range outcomes {
 		counts[o.result]++
-		line := fmt.Sprintf("  %-16s %s", o.app, o.result)
-		if o.detail != "" {
-			line += " (" + o.detail + ")"
+		if verbose || o.incomplete() {
+			line := fmt.Sprintf("  %-16s %s", o.app, o.result)
+			if o.detail != "" {
+				line += " (" + o.detail + ")"
+			}
+			fmt.Println(line)
 		}
-		fmt.Println(line)
 	}
-	fmt.Printf("Result: %d installed, %d already installed, %d failed, %d blocked, %d skipped\n",
-		counts[outcomeInstalled], counts[outcomeAlready], counts[outcomeFailed], counts[outcomeBlocked], counts[outcomeSkipped])
+	fmt.Printf("Result %s: %d installed, %d already installed, %d failed, %d blocked, %d skipped\n",
+		profileID, counts[outcomeInstalled], counts[outcomeAlready], counts[outcomeFailed], counts[outcomeBlocked], counts[outcomeSkipped])
 	if counts[outcomeFailed]+counts[outcomeBlocked] > 0 {
 		fmt.Fprintln(os.Stderr, "The profile is incomplete; fix the failures above and run the same command again. Installed applications are kept.")
 		return 1
