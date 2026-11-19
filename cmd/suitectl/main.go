@@ -19,7 +19,21 @@ import (
 	"github.com/sempitern0/Sovereign/internal/state"
 )
 
-const version = "0.3.0-dev"
+// version and commit are injected by the release build:
+// -ldflags "-X main.version=<semver> -X main.commit=<git sha>".
+var (
+	version = "0.3.0-dev"
+	commit  = ""
+)
+
+// VersionInfo is the JSON contract of `suitectl version --json`.
+type VersionInfo struct {
+	Version   string `json:"version"`
+	Commit    string `json:"commit,omitempty"`
+	GoVersion string `json:"go_version"`
+	Platform  string `json:"platform"`
+	Arch      string `json:"arch"`
+}
 
 // Process boundaries, replaceable in tests so no test run reaches a real
 // package manager or depends on the terminal it was started from.
@@ -42,10 +56,24 @@ func run(args []string) int {
 	}
 	switch args[0] {
 	case "version":
-		if len(args) != 1 {
+		fs := flag.NewFlagSet("version", flag.ContinueOnError)
+		fs.SetOutput(os.Stderr)
+		machine := fs.Bool("json", false, "Machine-readable version information")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		if fs.NArg() != 0 {
 			return usageError("version takes no arguments")
 		}
-		fmt.Println("suitectl", version)
+		info := VersionInfo{Version: version, Commit: commit, GoVersion: runtime.Version(), Platform: runtime.GOOS, Arch: runtime.GOARCH}
+		if *machine {
+			return printJSON(info)
+		}
+		line := "suitectl " + info.Version
+		if info.Commit != "" {
+			line += " (" + info.Commit + ")"
+		}
+		fmt.Println(line, info.GoVersion, info.Platform+"/"+info.Arch)
 		return 0
 	case "doctor":
 		fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
@@ -374,7 +402,7 @@ func loadError(err error) int {
 
 func usage() {
 	fmt.Println("Sovereign — local-first environment orchestrator")
-	fmt.Println("Usage: suitectl doctor [--json] | version")
+	fmt.Println("Usage: suitectl doctor [--json] | version [--json]")
 	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json]")
 	fmt.Println("       suitectl profiles list [--json]")
 	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--no-inspect]")

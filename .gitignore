@@ -1,6 +1,10 @@
 # Sovereign: generated binaries and local state
 /suitectl
 /suitectl.exe
+# Release build outputs (tools/release.py)
+/dist/
+/dist-check/
+/smoke/
 *.test
 *.out
 coverage/

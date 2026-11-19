@@ -132,3 +132,23 @@ func TestStatusRejectsPositionalArguments(t *testing.T) {
 		t.Fatalf("got %d", got)
 	}
 }
+
+func TestVersionReportsInjectedBuildInfo(t *testing.T) {
+	previousVersion, previousCommit := version, commit
+	version, commit = "1.2.3-rc.1", "0123456789ab"
+	t.Cleanup(func() { version, commit = previousVersion, previousCommit })
+	code, out := captureStdout(t, func() int { return run([]string{"version", "--json"}) })
+	var info VersionInfo
+	if code != 0 || json.Unmarshal([]byte(out), &info) != nil {
+		t.Fatalf("code=%d out=%q", code, out)
+	}
+	if info.Version != "1.2.3-rc.1" || info.Commit != "0123456789ab" || info.Platform != runtime.GOOS || info.Arch != runtime.GOARCH || !strings.HasPrefix(info.GoVersion, "go") {
+		t.Fatalf("info %+v", info)
+	}
+	if _, text := captureStdout(t, func() int { return run([]string{"version"}) }); !strings.Contains(text, "suitectl 1.2.3-rc.1 (0123456789ab)") {
+		t.Fatalf("text %q", text)
+	}
+	if got := run([]string{"version", "extra"}); got != 2 {
+		t.Fatalf("extra args: %d", got)
+	}
+}

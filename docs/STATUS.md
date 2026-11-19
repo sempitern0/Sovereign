@@ -13,8 +13,8 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 | H0 — Fundación | Completado | Esquema v1, validador Python y CI Windows/Linux |
 | H1 — Planificación | Completado | `plan` determinista y JSON v1; tests de alternativas, dependencias e incompatibilidades |
 | H2 — Primera instalación (LocalSend) | Completado | PR #2 y PR #3 fusionadas. CI de PR #3 en verde en ubuntu-latest y windows-latest (Go, catálogo). **El usuario confirma pruebas reales (2026-11-11)**; no se han adjuntado registros |
-| H3 — Perfil esencial instalable | En curso | H3-1 (VLC) y H3-2 (LibreOffice) fusionadas; en Windows real solo se ha validado la **detección** (ya estaban instaladas), no la instalación. H3-3 (`apply --profile`, journal, bloqueo) fusionada (PR #6). H3-4 (`status`) en revisión. **Con H3-4, H3 queda completo en código; falta la aceptación real del perfil** |
-| H4 — Primera release distribuible | Pendiente | — |
+| H3 — Perfil esencial instalable | Completo en código; aceptación real parcial | H3-1 a H3-4 fusionadas (PR #4–#7). En Windows real solo consta la **detección** de VLC y LibreOffice ya instalados; falta la instalación real del perfil en un equipo limpio (Windows y Linux) |
+| H4 — Primera release distribuible | En curso | H4-1 (build reproducible, SBOM, procedencia firmada, workflow) en revisión. H4-2 (bootstrap que descarga y verifica la release) pendiente |
 | H5 — Datos y portabilidad | Pendiente | — |
 | H6 — Android guiado | Pendiente | — |
 | H7 — Kits offline | Pendiente | — |
@@ -24,7 +24,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 ## Qué funciona hoy
 
 - `suitectl doctor | catalog list | profiles list | plan` (solo lectura) y `verify` / `apply --app <id> --yes` para `localsend`, `vlc` y `libreoffice`.
-- `status` (rama H3-4): estado deseado frente a observado y registrado, con avisos de deriva; solo lectura, texto y JSON.
+- `status`: estado deseado frente a observado y registrado, con avisos de deriva; solo lectura, texto y JSON.
 - `apply --profile essential --yes` instala con un solo consentimiento todo lo que falta del perfil, sigue tras un fallo, bloquea dependientes y resume por app; journal local sin datos personales y bloqueo contra dos `apply` simultáneos (ADR-0007).
 - Funciona desde cualquier carpeta: catálogo, perfiles y allowlist van incrustados. `--root <checkout>` lee una copia de desarrollo; la allowlist nunca se lee de disco.
 - Instalable en `main`:
@@ -37,8 +37,9 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Siguiente acción
 
-1. **Revisar y fusionar H3-4** (rama `feat/h3-4-status`).
-2. **Completar las pruebas reales** en un equipo donde VLC y LibreOffice **no** estén instalados (por ejemplo, una VM de Windows recién creada y una distribución Linux con Flatpak), usando ya el perfil: `suitectl apply --profile essential` (sin `--yes`, debe listar lo que falta y no cambiar nada) y después con `--yes`. Preparación del equipo:
+1. **Revisar y fusionar H4-1** (rama `feat/h4-1-release`): la CI del PR ejecuta el workflow de release en modo prueba (compila dos veces y exige artefactos idénticos; no publica).
+2. **Publicar la primera release** cuando el mantenedor lo decida: `git tag -a v0.4.0 -m "suitectl 0.4.0" && git push origin v0.4.0` (o `v0.4.0-rc.1` para una pre-release). El workflow firma la procedencia y crea la release. Verificarla con las instrucciones del README («Download a release») y registrar aquí el resultado.
+3. **Aceptación real del perfil** en un equipo sin VLC ni LibreOffice, idealmente ya con el binario de la release (sin Git ni Go):
 
    ```bash
    # Linux
@@ -67,12 +68,12 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
    - **Perfil:** cancelar el UAC de una app la marca `failed` y el resto continúa; el resumen termina con código 1 y repetir el comando completa lo que faltaba; dos `apply` a la vez → el segundo se niega; el journal (`%LOCALAPPDATA%\Sovereign\state\journal.json` o `~/.local/state/sovereign/journal.json`) refleja cada resultado sin rutas ni nombres de usuario.
 
    Registrar el resultado aquí. Si algo falla: abrir un PR de corrección o retirar la entrada de `catalog/install-allowlist.yaml` (la app vuelve a quedar no instalable).
-3. **Cerrar H3** con esa evidencia real registrada aquí y empezar **H4 — primera release distribuible**: binarios Windows/Linux (x86-64 y ARM64) generados en CI con checksums, SBOM y procedencia; bootstrap que descarga y verifica la release en vez de Go; dependencias vendorizadas. Ver [plan §10](../PLAN_TECNICO_SUITE_LIBRE.md#10-hoja-de-ruta-y-entregables) y la fila «Release / bootstrap (H4)» de `AGENTS.md`.
+4. **H4-2:** el bootstrap descarga la release de la versión fijada, comprueba `SHA256SUMS` y, si `gh` está disponible, la attestation; ya no instala Go para usar Sovereign. Ver [plan §10](../PLAN_TECNICO_SUITE_LIBRE.md#10-hoja-de-ruta-y-entregables) y la fila «Release / bootstrap (H4)» de `AGENTS.md`.
 
 ## Limitaciones conocidas
 
-- La release distribuible no existe todavía (H4): usar el bootstrap con Go de usuario o compilar.
-- `bootstrap --offline` falla si el módulo `gopkg.in/yaml.v3` no está en la caché de Go; se resolverá vendorizando en H4.
+- Aún no se ha publicado ninguna release: la primera sale al crear una etiqueta `v*` (decisión del mantenedor). Hasta entonces, bootstrap con Go de usuario o compilar (ya funciona sin red gracias a `vendor/`).
+- Los binarios no llevan firma Authenticode; SmartScreen puede avisar en Windows. La autenticidad se verifica con `gh attestation verify`.
 - La QA real del bootstrap de Go en equipos limpios (checklist de `BOOTSTRAP_GO.md`) no consta como realizada.
 - La detección «no instalado» de WinGet conserva un texto en inglés solo como respaldo; la señal principal es el código de salida.
 
@@ -88,6 +89,8 @@ No ejecutado / limitaciones: …
 Siguiente acción: …
 ```
 
+- **2026-11-13 · feat/h4-1-release · H4-1.** `vendor/` con `gopkg.in/yaml.v3` v3.0.1 (hash idéntico al de `go.sum`; obtenido del repositorio oficial vía proxy local porque el proxy de Go no es accesible desde el entorno del agente; la CI lo regenera desde el proxy oficial y exige cero diferencias). Compilación y tests sin red con caché vacía. `suitectl version [--json]` con versión y commit inyectados. `tools/release.py`: 4 objetivos, archivos deterministas, SBOM SPDX 2.3 y SHA256SUMS; dos compilaciones locales independientes dieron artefactos idénticos; binario extraído ejecutado fuera del repositorio. Workflow `release.yml`: acciones fijadas por SHA (entradas comprobadas en cada `action.yml`), jobs con mínimo privilegio, publicación solo con etiqueta `v*` tras firmar la procedencia (ADR-0008). Tests: 8 de Python para la herramienta de release y 1 de Go para `version`. No ejecutado: el workflow en GitHub con etiqueta (no se ha publicado ninguna release) ni la verificación con `gh attestation verify`.
+- **2026-11-13 · main · H3-4 fusionada (PR #7).**
 - **2026-11-11 · feat/h3-4-status · H3-4.** `status [--profile] [--json]` de solo lectura: por app, estado observado, último resultado registrado y nota de deriva (registrado como instalado pero ya no presente, último intento fallido, instalado fuera de Sovereign) con siguiente paso; `complete` en JSON (`schema_version` 1); entradas del journal fuera del perfil en `other_recorded`. `state.Store.Peek` lee sin tocar el disco; `Load` se apoya en él. Tests con proveedores simulados, incluido que `status` no modifica el directorio de estado ni ejecuta comandos de instalación (mutación `Peek`→`Load` detectada). Go test/vet en verde. No ejecutado: proveedores reales.
 - **2026-11-11 · main · H3-3 fusionada (PR #6).**
 - **2026-11-11 · feat/h3-3-apply-profile · H3-3.** `apply --profile` con un consentimiento, orden topológico, continuación tras fallos, `blocked` para dependientes y resumen con código 1 si el perfil queda incompleto. Nuevo `internal/state`: journal atómico (0600, sin salida de proveedores: solo clases de error), journal corrupto apartado y bloqueo con detección de proceso muerto (ADR-0007). `apply --app` también usa bloqueo y journal. Tests con proveedores simulados, incluido que el journal no filtra rutas; mutaciones comprobadas (sin bloqueo por dependencia o sin lock, los tests fallan). Go test/vet (Linux; vet Windows) en verde. La primera CI falló porque la regla `state/` de `.gitignore` ocultaba `internal/state/`; corregida (`/state/`) y verificado un checkout limpio. No ejecutado: proveedores reales.

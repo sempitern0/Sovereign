@@ -4,7 +4,7 @@
 
 Sovereign aims to prepare everyday devices with declarative catalogs, profiles and trusted package managers. Local apps and data must remain usable without Internet or a NAS. [Multisuite](https://github.com/sempitern0/Multisuite) is an **optional future connector**, not a dependency.
 
-## Current state: H0–H2 complete, next H3 (installable essential profile)
+## Current state: H0–H3 complete in code, H4 (distributable release) in progress
 
 Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
@@ -20,6 +20,30 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 - Blocked plan entries include a `next_step` with the exact action to take (for example, how to install a missing package manager).
 
 `apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no prebuilt release yet (milestone H4): run from a clone with the bootstrap below.
+
+## Download a release
+
+Each tagged release ships `suitectl` for Windows and Linux (x86-64 and ARM64) with no runtime to install: `.zip` for Windows, `.tar.gz` for Linux, an SPDX SBOM per archive and `SHA256SUMS`. Builds are reproducible and their provenance is signed by this repository's release workflow ([ADR-0008](docs/architecture/adr/0008-reproducible-release.md)).
+
+Verify **before** running. The checksum detects a damaged download; the signed attestation proves it was built here (a checksum downloaded from the same place does not authenticate the file on its own):
+
+```bash
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing
+gh attestation verify suitectl_<version>_linux_amd64.tar.gz --repo sempitern0/Sovereign
+tar -xzf suitectl_<version>_linux_amd64.tar.gz && ./suitectl_<version>_linux_amd64/suitectl version
+```
+
+```powershell
+# Windows (PowerShell)
+$file = "suitectl_<version>_windows_amd64.zip"
+$expected = (Select-String -Path SHA256SUMS -Pattern ([regex]::Escape($file))).Line.Split(" ")[0]
+if ((Get-FileHash $file -Algorithm SHA256).Hash.ToLower() -ne $expected) { throw "Checksum mismatch" }
+gh attestation verify $file --repo sempitern0/Sovereign
+Expand-Archive $file; .\suitectl_<version>_windows_amd64\suitectl_<version>_windows_amd64\suitectl.exe version
+```
+
+`gh` is the GitHub CLI. The binaries are not signed with a Windows code-signing certificate, so SmartScreen may warn on first run.
 
 ## Development
 
@@ -91,10 +115,12 @@ A plan carries no private metadata and can be generated entirely offline. Cross-
 - `integrations/multisuite`: design notes for the optional connector (H8); no code yet.
 - `android`: guided onboarding (H6); no silent APK installation.
 
-The repository's [technical plan](PLAN_TECNICO_SUITE_LIBRE.md) is authoritative. Development instructions: [AGENTS.md](AGENTS.md) (Claude Code: [CLAUDE.md](CLAUDE.md)). Security: [SECURITY.md](SECURITY.md). ADRs: [0001](docs/architecture/adr/0001-core-stack.md), [0002](docs/architecture/adr/0002-planning-contract.md), [0003](docs/architecture/adr/0003-first-provider.md), [0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md), [0005](docs/architecture/adr/0005-roadmap-release-first.md), [0006](docs/architecture/adr/0006-install-scope-and-provenance.md), [0007](docs/architecture/adr/0007-profile-apply-and-journal.md).
+The repository's [technical plan](PLAN_TECNICO_SUITE_LIBRE.md) is authoritative. Development instructions: [AGENTS.md](AGENTS.md) (Claude Code: [CLAUDE.md](CLAUDE.md)). Security: [SECURITY.md](SECURITY.md). ADRs: [0001](docs/architecture/adr/0001-core-stack.md), [0002](docs/architecture/adr/0002-planning-contract.md), [0003](docs/architecture/adr/0003-first-provider.md), [0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md), [0005](docs/architecture/adr/0005-roadmap-release-first.md), [0006](docs/architecture/adr/0006-install-scope-and-provenance.md), [0007](docs/architecture/adr/0007-profile-apply-and-journal.md), [0008](docs/architecture/adr/0008-reproducible-release.md).
 
 ## Delivery sequence
 
 H0–H2 foundation, planning and first verified installer (done) → **H3 installable essential profile** → H4 first distributable release (no Git or Go needed) → H5 portable data → H6 guided Android → H7 offline kits → H8 optional Multisuite connector → H9 UX and user guides. Order and rationale: [ADR-0005](docs/architecture/adr/0005-roadmap-release-first.md).
+
+Dependencies are vendored: `go build ./cmd/suitectl` works offline. Release artifacts locally: `python3 tools/release.py --version 0.0.0-dev --out dist` (see ADR-0008); publishing happens only from a `v*` tag in CI.
 
 MIT license; third-party apps retain their respective licenses.

@@ -13,6 +13,8 @@ Assets: personal documents, credentials, OS package state, installer provenance 
 | Community-built package | `provenance: community` recorded from the channel manifest, shown before consent and accepted per app by the maintainer |
 | Personal data in local state | Journal stores error classes, never raw provider output or paths; per-user directory, 0600 |
 | Concurrent or interrupted runs | Exclusive apply lock with dead-process detection; atomic journal writes; corrupt journal moved aside |
+| Tampered release download | Reproducible builds; SHA256SUMS plus Sigstore-signed SLSA provenance (`gh attestation verify`); SBOM per archive |
+| Compromised CI action or dependency | Actions pinned by commit SHA; least-privilege jobs; vendored dependency checked against `go.sum` |
 | Invisible prompt or hung installer | Interactive only on a real terminal; otherwise prompts disabled; timeouts on every provider call |
 | Command injection | Pass structured arguments to trusted package manager executables |
 | Unintended elevation | Show plan and explicitly request per-operation consent |
