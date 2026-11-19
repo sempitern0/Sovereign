@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"runtime"
 )
 
 func TestConciseHumanOutputWhenProfileIsComplete(t *testing.T) {
@@ -46,11 +47,15 @@ func TestVerboseDisplaysRequestedDetail(t *testing.T) {
 
 func TestMissingAppShowsActionableAdminNotice(t *testing.T) {
 	ls, vlc, lo := packageIDs()
-	host := &fakeHost{installed: map[string]bool{ls: true, vlc: false, lo: true}}
+	host := &fakeHost{installed: map[string]bool{ls: true, lo: true}}
 	withProcess(t, &scriptedRunner{respond: host.respond}, false)
 	withStateDir(t)
 	code, out := captureStdout(t, func() int { return run([]string{"plan", "--profile", "essential"}) })
-	if code != 0 || !strings.Contains(out, "vlc") || !strings.Contains(out, "administrator approval") ||
+	notice := "administrator approval"
+	if runtime.GOOS == "linux" {
+		notice = "community-built package"
+	}
+	if code != 0 || !strings.Contains(out, "vlc") || !strings.Contains(out, notice) ||
 		strings.Contains(out, "Microsoft.VCRedist") {
 		t.Fatalf("missing app should show only its own notices: code=%d output=%q", code, out)
 	}
