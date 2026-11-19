@@ -46,7 +46,7 @@ func TestVerboseDisplaysRequestedDetail(t *testing.T) {
 }
 
 func TestMissingAppShowsActionableAdminNotice(t *testing.T) {
-	ls, vlc, lo := packageIDs()
+	ls, _, lo := packageIDs()
 	host := &fakeHost{installed: map[string]bool{ls: true, lo: true}}
 	withProcess(t, &scriptedRunner{respond: host.respond}, false)
 	withStateDir(t)
