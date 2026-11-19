@@ -51,10 +51,18 @@ func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
 	if len(args) == 0 {
+		if isTerminal() {
+			return runWizard()
+		}
 		usage()
 		return 0
 	}
 	switch args[0] {
+	case "wizard":
+		if len(args) != 1 {
+			return usageError("wizard takes no arguments")
+		}
+		return runWizard()
 	case "version":
 		fs := flag.NewFlagSet("version", flag.ContinueOnError)
 		fs.SetOutput(os.Stderr)
@@ -433,7 +441,8 @@ func loadError(err error) int {
 
 func usage() {
 	fmt.Println("Sovereign — local-first environment orchestrator")
-	fmt.Println("Usage: suitectl doctor [--json] | version [--json]")
+	fmt.Println("Usage: suitectl [wizard] (interactive terminal)")
+	fmt.Println("       suitectl doctor [--json] | version [--json]")
 	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json]")
 	fmt.Println("       suitectl profiles list [--json]")
 	fmt.Println("       suitectl plan --profile essential [--platform linux] [--json] [--verbose] [--no-inspect]")
