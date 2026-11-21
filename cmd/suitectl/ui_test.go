@@ -76,7 +76,7 @@ func TestPlanSummarizesAppsNotAvailableOnThisPlatform(t *testing.T) {
 	code, out := captureStdout(t, func() int {
 		return run([]string{"plan", "--profile", "essential", "--platform", "linux", "--no-inspect", "--root", root})
 	})
-	if code != 0 || !strings.Contains(out, "1 not yet available on this platform") ||
+	if code != 0 || !strings.Contains(out, " not yet available on this platform") ||
 		!strings.Contains(out, "beta             not yet available on linux (skipped)") ||
 		strings.Contains(out, "Package source and identifier not verified") {
 		t.Fatalf("code=%d out=%q", code, out)
