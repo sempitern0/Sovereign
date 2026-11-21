@@ -10,12 +10,28 @@ capabilities:
 platforms:
   windows:
     status: pending
-    provider: manual
-    notes: No existe instalador de escritorio Windows validado para Sovereign.
+    provider: winget
+    notes: >-
+      WinGet manifest CoMaps.CoMaps 2026.06.13-1-0839e6d4 (publisher CoMaps Community,
+      nullsoft x64 installer from cdn-us-1.comaps.app with pinned SHA-256, dependency
+      Microsoft.VCRedist.2015+.x64). Not verified yet: the manifest declares no Scope,
+      so the install scope (user or machine/UAC) must be confirmed on a real device
+      before allowlisting; the Windows build also lags the Linux release by months.
   linux:
-    status: pending
+    status: verified
     provider: flatpak
-    notes: Manifest público de Flathub app.comaps.comaps; confirmar distribución estable, versión publicada y soporte antes de autorizar instalación.
+    package_id: app.comaps.comaps
+    source: https://github.com/flathub/app.comaps.comaps/blob/master/app.comaps.comaps.yml
+    verified_at: "2026-11-21"
+    scope: user
+    provenance: community
+    notes: >-
+      Flathub stable 2026.11.07, built from the official codeberg.org/comaps/comaps tag
+      v2026.11.07-16 (pinned commit) and maintained in github.com/flathub/app.comaps.comaps
+      (last update 2026-11-15). Recorded as community because no Flathub verification
+      by the CoMaps project could be confirmed. Uses the org.kde.Platform 6.11 runtime
+      (large first download) and bundles only the world overview map: regional maps
+      are downloaded inside the app.
   android:
     status: pending
     provider: fdroid

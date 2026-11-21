@@ -32,7 +32,8 @@ func TestOfflineCatalogAndWindowsToolNeverAutoInstall(t *testing.T) {
 		}
 		for _, platform := range []string{"windows", "linux"} {
 			_, err := (install.Engine{Platform: platform}).Resolve(c, id, platform)
-			if err == nil {
+			verified := c.Apps[id].Platforms[platform].Status == "verified"
+			if !verified && err == nil {
 				t.Fatalf("unverified package %s unexpectedly installable on %s", id, platform)
 			}
 		}

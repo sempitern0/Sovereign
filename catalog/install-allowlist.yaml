@@ -56,6 +56,14 @@ entries:
       - Microsoft.VCRedist.2015+.x64
       - Microsoft.VCRedist.2015+.x86
       - Microsoft.VCRedist.2015+.arm64
+  - application: comaps
+    upstream: https://www.comaps.app/
+    platform: linux
+    provider: flatpak
+    package_id: app.comaps.comaps
+    source: https://github.com/flathub/app.comaps.comaps/blob/master/app.comaps.comaps.yml
+    scope: user
+    provenance: community
   - application: libreoffice
     upstream: https://www.libreoffice.org/
     platform: linux

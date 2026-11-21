@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sempitern0/Sovereign/internal/install"
 	"github.com/sempitern0/Sovereign/internal/state"
 )
 
@@ -78,6 +80,41 @@ func packageIDs() (localsend, vlc, libreoffice string) {
 	return "org.localsend.localsend_app", "org.videolan.VLC", "org.libreoffice.LibreOffice"
 }
 
+// extraProfilePackages returns the application and package IDs of the
+// allowlisted setup applications on this OS beyond LocalSend, VLC and
+// LibreOffice, so tests keep working as verified apps join the single setup.
+func extraProfilePackages(t *testing.T) (apps, ids []string) {
+	t.Helper()
+	c, err := loadCatalog("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow, err := install.Embedded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, app := range c.Profiles["essential"].Applications {
+		if app == "localsend" || app == "vlc" || app == "libreoffice" {
+			continue
+		}
+		if e, ok := allow.Lookup(app, runtime.GOOS); ok {
+			apps, ids = append(apps, app), append(ids, e.PackageID)
+		}
+	}
+	return apps, ids
+}
+
+// allInstalled marks every allowlisted setup package on this OS as installed.
+func allInstalled(t *testing.T) map[string]bool {
+	ls, vlc, lo := packageIDs()
+	installed := map[string]bool{ls: true, vlc: true, lo: true}
+	_, extra := extraProfilePackages(t)
+	for _, id := range extra {
+		installed[id] = true
+	}
+	return installed
+}
+
 func readJournal(t *testing.T, dir string) map[string]state.Entry {
 	t.Helper()
 	j, err := (state.Store{Dir: dir}).Load()
@@ -98,7 +135,9 @@ func TestApplyProfileNeedsOneConsentAndChangesNothingWithout(t *testing.T) {
 	withProcess(t, runner, true)
 	dir := withStateDir(t)
 	code, stderr := captureStderr(t, func() int { return run([]string{"apply", "--profile", "essential"}) })
-	if code != 3 || !strings.Contains(stderr, "2 application(s) would be installed: ") || !strings.Contains(stderr, "--yes") {
+	extraApps, _ := extraProfilePackages(t)
+	want := fmt.Sprintf("%d application(s) would be installed: ", 2+len(extraApps))
+	if code != 3 || !strings.Contains(stderr, want) || !strings.Contains(stderr, "--yes") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
 	if len(runner.interactive) != 0 {
@@ -142,8 +181,7 @@ func TestApplyProfileInstallsMissingAndKeepsGoingAfterFailure(t *testing.T) {
 }
 
 func TestApplyProfileSecondRunChangesNothing(t *testing.T) {
-	ls, vlc, lo := packageIDs()
-	host := &fakeHost{installed: map[string]bool{ls: true, vlc: true, lo: true}}
+	host := &fakeHost{installed: allInstalled(t)}
 	runner := &scriptedRunner{respond: host.respond}
 	withProcess(t, runner, true)
 	withStateDir(t)
@@ -230,6 +268,33 @@ func TestApplyFlagsAreExclusive(t *testing.T) {
 	} {
 		if got := run(args); got != 2 {
 			t.Fatalf("%v returned %d", args, got)
+		}
+	}
+}
+
+// A setup application that is not verified on this platform (for example
+// CoMaps on Windows) is skipped: never installed and never makes the setup
+// incomplete.
+func TestApplyProfileSkipsAppsNotVerifiedOnThisPlatform(t *testing.T) {
+	root := catalogWithPendingApp(t)
+	profile := filepath.Join(root, "profiles", "essential.yaml")
+	data, err := os.ReadFile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profile, append(data, []byte("  - beta\n")...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	host := &fakeHost{installed: allInstalled(t)}
+	runner := &scriptedRunner{respond: host.respond}
+	withProcess(t, runner, true)
+	withStateDir(t)
+	if code := run([]string{"apply", "--profile", "essential", "--yes", "--root", root}); code != 0 {
+		t.Fatalf("pending app must not make the setup fail, code=%d", code)
+	}
+	for _, call := range append(runner.calls, runner.interactive...) {
+		if strings.Contains(strings.Join(call, " "), "beta") {
+			t.Fatalf("pending app reached the package manager: %v", call)
 		}
 	}
 }
