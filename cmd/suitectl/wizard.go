@@ -58,7 +58,11 @@ func (w *wizard) pickProfile() (string, bool) {
 		p := w.catalog.Profiles[id]
 		label := p.Name
 		if len(p.Applications) == 0 && len(p.Alternatives) == 0 {
-			label += " (en preparación)"
+			if len(p.Optional) > 0 {
+				label += " (opciones pendientes de validación)"
+			} else {
+				label += " (en preparación)"
+			}
 		}
 		fmt.Fprintf(w.output, " %d) %s\n", i+1, label)
 	}
@@ -76,7 +80,17 @@ func (w *wizard) profile() {
 	}
 	p := w.catalog.Profiles[id]
 	if len(p.Applications) == 0 && len(p.Alternatives) == 0 {
-		fmt.Fprintln(w.output, "Este perfil aún no contiene aplicaciones verificadas.")
+		if len(p.Optional) > 0 {
+			fmt.Fprintln(w.output, "Aplicaciones incluidas como opciones futuras:")
+			for _, appID := range p.Optional {
+				if app, ok := w.catalog.Apps[appID]; ok {
+					fmt.Fprintf(w.output, "  - %s: pendiente de instalación verificada\n", app.Name)
+				}
+			}
+			fmt.Fprintln(w.output, "No se instalará ninguna de ellas automáticamente.")
+		} else {
+			fmt.Fprintln(w.output, "Este perfil aún no contiene aplicaciones verificadas.")
+		}
 		return
 	}
 	if w.execute("plan", "--profile", id) != 0 {
@@ -156,8 +170,10 @@ func (w *wizard) run() int {
 		fmt.Fprintln(w.output, "4) Explorar catálogo")
 		fmt.Fprintln(w.output, "5) Diagnóstico del equipo")
 		fmt.Fprintln(w.output, "6) Opciones avanzadas")
+		fmt.Fprintln(w.output, "7) Privacidad de Windows (auditoría)")
+		fmt.Fprintln(w.output, "8) Mapas, Wikipedia y biblioteca offline")
 		fmt.Fprintln(w.output, "0) Salir")
-		n, ok := w.choose(6)
+		n, ok := w.choose(8)
 		if !ok || n == 0 {
 			fmt.Fprintln(w.output, "Hasta pronto.")
 			return 0
@@ -181,6 +197,18 @@ func (w *wizard) run() int {
 			fmt.Fprintln(w.output, "  sovereign plan --profile essential --verbose")
 			fmt.Fprintln(w.output, "  sovereign profiles list")
 			fmt.Fprintln(w.output, "  sovereign apply --profile essential --yes")
+		case 7:
+			if runtime.GOOS == "windows" {
+				w.execute("privacy", "audit")
+			} else {
+				fmt.Fprintln(w.output, "La auditoría de privacidad está disponible únicamente en Windows.")
+			}
+		case 8:
+			fmt.Fprintln(w.output, "Biblioteca offline — instalación y datos separados:")
+			fmt.Fprintln(w.output, "  Kiwix: Wikipedia y otros contenidos ZIM — https://library.kiwix.org/")
+			fmt.Fprintln(w.output, "  CoMaps: mapas regionales que deben descargarse antes de viajar — https://www.comaps.app/")
+			fmt.Fprintln(w.output, "  Las aplicaciones y datos aún no están habilitados en el instalador de Sovereign.")
+			fmt.Fprintln(w.output, "  Documentación: docs/OFFLINE_LIBRARY.md")
 		}
 	}
 }

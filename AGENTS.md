@@ -74,3 +74,9 @@ Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is r
 - The no-argument launchers open `wizard` only when stdin/stdout are real terminals. Explicit commands remain scriptable; `--json` contract and exit codes are unchanged.
 - Profile and single-app installation require a separate explicit `SI` confirmation after showing the plan and risk metadata. Never silently install software when a selection or number is entered.
 - Keep a pure, testable input/output boundary; do not add external TUI packages or rely on ANSI support.
+
+## Offline content and Windows privacy safeguards
+
+- App installation and offline content downloads are separate consented steps. Do not mark Kiwix/CoMaps installed or offline-ready merely because a manifest exists. Unverified entries must not be added to the embedded install allowlist.
+- WinHance's PolyForm Shield 1.0.0 licence is source-available and restrictive; never label it as OSI free/open source. Never pipe `irm` or `curl` directly into a shell.
+- Windows privacy auditing is read-only. Never disable security controls, updates, critical Windows services or processes automatically. A mutable privacy adjustment needs a tested backup, rollback, Windows-version compatibility and explicit per-action consent.

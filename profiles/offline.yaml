@@ -1,5 +1,8 @@
 schema_version: 1
 id: offline
-name: Offline
-description: Perfil reservado para Kiwix, mapas y bibliotecas verificadas.
+name: Biblioteca offline
+description: Propuesta de mapas y conocimiento sin conexión. Descarga de ZIM y regiones de mapas aún no implementada.
 applications: []
+optional:
+  - kiwix
+  - comaps

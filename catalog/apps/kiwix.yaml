@@ -1,0 +1,22 @@
+schema_version: 1
+id: kiwix
+name: Kiwix
+category: reading
+license: GPL-3.0
+upstream: https://www.kiwix.org/
+description: Lector de bibliotecas ZIM (Wikipedia, Wikivoyage y otros contenidos offline).
+capabilities:
+  - offline_reading
+platforms:
+  windows:
+    status: pending
+    provider: manual
+    notes: Kiwix Desktop tiene distribuciones oficiales, pero falta revisión de un instalador automatizable y de su firma.
+  linux:
+    status: pending
+    provider: flatpak
+    notes: Flathub usa org.kiwix.desktop; antes de habilitar la instalación hay que validar rama, mantenimiento, procedencia y aceptación real.
+  android:
+    status: pending
+    provider: fdroid
+    notes: Instalación Android guiada futura; necesita validación del identificador y firma.

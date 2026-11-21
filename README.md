@@ -21,6 +21,13 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
 `apply` invokes the native package manager with user consent and can install LocalSend; real-device testing was confirmed by the maintainer on 2026-11-11. All other commands are read-only. There is no published release yet: run from a clone with the bootstrap below; the release pipeline is prepared for a future version tag.
 
+## Privacy and knowledge offline (initial integration)
+
+- `profiles/offline.yaml` now exposes optional Kiwix and CoMaps; **these are catalog entries, not authorized installations**. Wikipedia ZIM libraries and offline regional maps require independent downloads, storage and integrity verification. See [Offline library](docs/OFFLINE_LIBRARY.md).
+- WinHance is a Windows-only *source-available* option, **PolyForm Shield 1.0.0** (not an OSI-approved open-source licence). It is listed for manual review only; Sovereign does not download or execute its installer.
+- Windows can use `sovereign.ps1 privacy audit` (or the new wizard menu option) for a **read-only** inventory of selected privacy settings and services. No process, service, telemetry policy, scheduled task, Defender or Windows Update component is disabled. See [Windows privacy](docs/WINDOWS_PRIVACY.md).
+- A future opt-in privacy plan will require safe rollback and explicit approval for each compatible setting.
+
 ## Interactive assistant
 
 Launch **without arguments** to choose a profile, inspect its installation plan,

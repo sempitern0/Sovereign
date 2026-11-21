@@ -1,5 +1,7 @@
 schema_version: 1
 id: advanced
 name: Avanzado
-description: Herramientas avanzadas pendientes de verificación.
+description: Opciones adicionales de privacidad y sistema; ninguna modificación de Windows se ejecuta por defecto.
 applications: []
+optional:
+  - winhance

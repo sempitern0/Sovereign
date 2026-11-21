@@ -58,6 +58,8 @@ func run(args []string) int {
 		return 0
 	}
 	switch args[0] {
+	case "privacy":
+		return runPrivacy(args[1:])
 	case "wizard":
 		if len(args) != 1 {
 			return usageError("wizard takes no arguments")
@@ -450,5 +452,6 @@ func usage() {
 	fmt.Println("       suitectl apply --app <id> --yes [--non-interactive] (consent required)")
 	fmt.Println("       suitectl apply --profile essential --yes [--verbose] [--non-interactive]")
 	fmt.Println("       suitectl status [--profile essential] [--json] [--verbose]")
+	fmt.Println("       suitectl privacy audit [--json] (Windows read-only)")
 	fmt.Println("The catalog is embedded; --root <checkout> reads a development copy instead.")
 }

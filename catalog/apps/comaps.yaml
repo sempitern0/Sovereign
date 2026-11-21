@@ -1,0 +1,22 @@
+schema_version: 1
+id: comaps
+name: CoMaps
+category: offline
+license: Apache-2.0
+upstream: https://www.comaps.app/
+description: Mapas y navegación sin conexión tras descargar regiones; los mapas no se incluyen en el instalador.
+capabilities:
+  - offline_maps
+platforms:
+  windows:
+    status: pending
+    provider: manual
+    notes: No existe instalador de escritorio Windows validado para Sovereign.
+  linux:
+    status: pending
+    provider: flatpak
+    notes: Manifest público de Flathub app.comaps.comaps; confirmar distribución estable, versión publicada y soporte antes de autorizar instalación.
+  android:
+    status: pending
+    provider: fdroid
+    notes: Se requiere revisar repositorio, identificador oficial y firma para el futuro flujo guiado.

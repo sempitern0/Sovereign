@@ -79,6 +79,9 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Registro de iteración
 
+- **2026-11-21 · feat/offline-knowledge-windows-privacy · Biblioteca offline y privacidad Windows.** Catálogo opcional inicial para Kiwix, CoMaps y WinHance con licencias y procedencia diferenciadas. Auditoría Windows de solo lectura, sin modificación de telemetría, servicios ni procesos; asistente ampliado. ZIM y mapas todavía requieren descarga independiente y no hay nuevas apps en la allowlist. CI y QA pendientes.
+
+
 Añadir una entrada por PR, la más reciente arriba. Sin secretos, rutas personales ni datos de usuarios.
 
 ```text
