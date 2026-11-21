@@ -14,9 +14,14 @@ func TestOfflineCatalogAndWindowsToolNeverAutoInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, ok := c.Profiles["offline"]
-	if !ok || len(p.Applications) != 0 || len(p.Optional) != 2 {
-		t.Fatalf("offline profile must remain optional while packages are unverified: %+v", p)
+	if len(c.Profiles) != 1 {
+		t.Fatalf("expected one personal setup definition, got %d", len(c.Profiles))
+	}
+	if _, ok := c.Profiles["essential"]; !ok {
+		t.Fatal("internal essential setup definition is missing")
+	}
+	if _, ok := c.Profiles["offline"]; ok {
+		t.Fatal("unused offline profile must not be user-selectable")
 	}
 	for _, id := range []string{"kiwix", "comaps", "winhance"} {
 		if _, ok := c.Apps[id]; !ok {
