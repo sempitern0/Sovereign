@@ -80,3 +80,9 @@ Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is r
 - App installation and offline content downloads are separate consented steps. Do not mark Kiwix/CoMaps installed or offline-ready merely because a manifest exists. Unverified entries must not be added to the embedded install allowlist.
 - WinHance's PolyForm Shield 1.0.0 licence is source-available and restrictive; never label it as OSI free/open source. Never pipe `irm` or `curl` directly into a shell.
 - Windows privacy auditing is read-only. Never disable security controls, updates, critical Windows services or processes automatically. A mutable privacy adjustment needs a tested backup, rollback, Windows-version compatibility and explicit per-action consent.
+
+## Personal single-setup contract (2026-11-21)
+
+- There is exactly **one** active installation definition: `profiles/essential.yaml`. Its ID remains `essential` for journal/JSON compatibility. The end-user wizard must never ask to select a profile.
+- `setup` is an alias for a preview and `setup --yes` applies the verified missing packages. All prior consent, provenance, UAC, allowlist, error-handling and idempotence guarantees remain in force.
+- Do not reintroduce tiered plans (advanced/offline/multimedia). Optional map/knowledge/privacy capabilities belong in dedicated menu sections, not fake install profiles. Only ship a capability when its dependencies and data are verified.

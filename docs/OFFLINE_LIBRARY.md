@@ -15,7 +15,7 @@ Sovereign distingue **aplicación**, **paquete de datos** y **verificación del 
 - Flujo futuro: seleccionar regiones (con estimación de espacio y caducidad), verificar archivos descargados mediante fuentes oficiales, exportar/importar mapas locales, no asumir que los archivos `.mwm` son portables entre versiones.
 
 ## Estado actual
-- Kiwix y CoMaps figuran en `catalog/apps` y como opciones del perfil `offline`.
+- Kiwix y CoMaps figuran en `catalog/apps` y como opciones futuras del asistente y del catálogo.
 - No se han añadido a `catalog/install-allowlist.yaml`; por tanto **Sovereign no los instala aún**.
 - Tampoco se descargan ZIM, mapas ni bibliotecas de forma silenciosa.
 - La opción de menú explica cómo obtener contenidos y qué queda pendiente, sin prometer acceso offline antes de tener los datos.

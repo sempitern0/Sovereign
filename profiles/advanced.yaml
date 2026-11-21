@@ -1,7 +1,0 @@
-schema_version: 1
-id: advanced
-name: Avanzado
-description: Opciones adicionales de privacidad y sistema; ninguna modificación de Windows se ejecuta por defecto.
-applications: []
-optional:
-  - winhance

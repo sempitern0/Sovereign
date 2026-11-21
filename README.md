@@ -28,60 +28,43 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 - Windows can use `sovereign.ps1 privacy audit` (or the new wizard menu option) for a **read-only** inventory of selected privacy settings and services. No process, service, telemetry policy, scheduled task, Defender or Windows Update component is disabled. See [Windows privacy](docs/WINDOWS_PRIVACY.md).
 - A future opt-in privacy plan will require safe rollback and explicit approval for each compatible setting.
 
-## Interactive assistant
+## Una sola preparación
 
-Launch **without arguments** to choose a profile, inspect its installation plan,
-install missing applications with a separate explicit confirmation, check status,
-install an individually reviewed app, browse the catalog or diagnose the host.
+Sovereign está diseñado para uso personal en equipos **nuevos o existentes**. No hay perfiles entre los que elegir: el asistente prepara una única configuración, comprueba las aplicaciones existentes y solo instala las que falten.
 
 ```powershell
-# Windows: choose from a numbered menu (no Go or Git commands needed)
+# Windows: ejecutar desde la carpeta del proyecto
 .\sovereign.ps1
-```
-
-```sh
-# Linux: same menu
-sh sovereign.sh
-```
-
-The assistant is written in Go's standard library (no terminal UI dependencies or
-ANSI color requirements), uses the embedded catalog and reuses the existing
-consent-gated CLI. **Selecting a profile does not install anything**: the plan is
-displayed first, and installation requires entering `SI`. Profiles without
-installable definitions are clearly marked as in preparation. In unattended
-environments, use explicit `plan`, `status` or `apply` commands; the assistant
-requires an interactive terminal. A binary release will not need Git or Go.
-
-Git is not installed by the launcher: users can clone with Git, download a ZIP, or
-later download a standalone release. Go is only bootstrapped if running from
-source and no compatible version is available. Running the prebuilt binary will
-not need Go. Multisuite remains optional.
-
-## Quick start (from a clone)
-
-One command runs Sovereign on Windows or Linux. The launcher reuses a compatible Go installation or securely installs the pinned official toolchain **for the current user**, then executes the command. No administrator privileges are requested just to run Sovereign.
-
-```powershell
-# Windows PowerShell
-.\sovereign.ps1 status
-.\sovereign.ps1 plan --profile essential
-.\sovereign.ps1 apply --profile essential
-# Only authorize if the plan shows missing applications:
-.\sovereign.ps1 apply --profile essential --yes
+# Alternativa sin menú: consultar los cambios necesarios
+.\sovereign.ps1 setup
+# Después de revisar, autorizar
+.\sovereign.ps1 setup --yes
 ```
 
 ```sh
 # Linux
-sh sovereign.sh status
-sh sovereign.sh plan --profile essential
-sh sovereign.sh apply --profile essential
-# Only authorize missing applications after reviewing the plan:
-sh sovereign.sh apply --profile essential --yes
+sh sovereign.sh
+sh sovereign.sh setup
+sh sovereign.sh setup --yes
 ```
 
-For troubleshooting use `--verbose`; for automations use `--json` on read-only commands. Without `--verbose`, completed applications and non-actionable warnings are omitted from terminal output. JSON schema and security checks are unchanged. Linux supports `sh sovereign.sh --offline status` if the required toolchain and vendored modules are already available.
+La primera opción del asistente es **Preparar este equipo**. Muestra el plan antes de cambiar nada, permite cancelar y exige escribir `SI` para instalar. Si está todo listo, repetir la preparación no vuelve a instalar aplicaciones. `status` presenta un resumen del entorno. El resto de funciones —aplicaciones adicionales, privacidad Windows, mapas y Wikipedia— permanecen disponibles como opciones separadas, sin instalar elementos todavía no aprobados.
 
-**Distribution note:** launchers execute Go source and may need network access on first use. The release pipeline for standalone executables is implemented but **no tagged release has been published**. When releases are available, extracted binaries run directly without Go or a checkout.
+La clave interna `essential` se conserva solo como identificador estable de estado y para compatibilidad con la CLI y el journal existente. `--profile essential` sigue funcionando en scripts antiguos, pero **no hay selección de perfiles en la experiencia del usuario**.
+
+Sovereign desde código fuente prepara Go si falta; no instala Git. Una futura release binaria permitirá ejecutar sin ninguno de ellos.
+
+## Arranque simplificado
+
+Desde una copia del repositorio, usar `sovereign.ps1` (Windows) o `sovereign.sh` (Linux) sin argumentos. Los lanzadores reutilizan Go o preparan una versión verificada en la carpeta del usuario si hace falta; no requieren instalar Go manualmente.
+
+- `setup`: vista previa y comprobación, sin cambios.
+- `setup --yes`: preparación automática de la configuración aprobada; instala solo lo que falta, con las autorizaciones necesarias del gestor de paquetes.
+- `status`: salud del entorno.
+- `privacy audit`: auditoría de privacidad Windows, sin modificar servicios.
+- `--verbose` y `--json`: opciones técnicas para detalles y automatización (en comandos compatibles).
+
+**Offline real:** el lector Kiwix, los mapas y sus archivos de datos todavía necesitan un flujo de instalación y descarga verificado; no se presentan como disponibles hasta completarlo. Las futuras releases precompiladas no requerirán Git ni Go.
 
 ## Download a release
 
@@ -157,7 +140,7 @@ Sources and operating checklist: [LocalSend runbook](docs/H2_LOCALSEND.md). CI s
 
 The default `plan` on the current operating system overlays **read-only** local state for allowlisted applications: `installed`, `not_installed`, or `inspection_failed`. Cross-platform plans and `--no-inspect` retain the deterministic H1-only result. The plan never invokes installation.
 
-## Plan states
+## Estados de planificación (uso avanzado)
 
 - `pending_verification`: package identity/source has not been verified; cannot install.
 - `unsupported`: no supported platform implementation.

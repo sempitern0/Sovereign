@@ -51,62 +51,24 @@ func (w *wizard) confirm() bool {
 	answer, ok := w.ask("Para autorizar la instalación escribe SI: ")
 	return ok && strings.EqualFold(answer, "SI")
 }
-func (w *wizard) pickProfile() (string, bool) {
-	ids := w.catalog.ProfileIDs()
-	fmt.Fprintln(w.output, "\nSeleccionar perfil")
-	for i, id := range ids {
-		p := w.catalog.Profiles[id]
-		label := p.Name
-		if len(p.Applications) == 0 && len(p.Alternatives) == 0 {
-			if len(p.Optional) > 0 {
-				label += " (opciones pendientes de validación)"
-			} else {
-				label += " (en preparación)"
-			}
-		}
-		fmt.Fprintf(w.output, " %d) %s\n", i+1, label)
-	}
-	fmt.Fprintln(w.output, " 0) Volver")
-	n, ok := w.choose(len(ids))
-	if !ok || n == 0 {
-		return "", false
-	}
-	return ids[n-1], true
-}
-func (w *wizard) profile() {
-	id, ok := w.pickProfile()
-	if !ok {
+
+// prepare follows one stable installation definition. No profile selection or
+// machine modification occurs before the user reviews the local plan.
+func (w *wizard) prepare() {
+	if w.execute("plan", "--profile", "essential") != 0 {
+		fmt.Fprintln(w.output, "No se pudo consultar el estado. No se ha instalado nada.")
 		return
 	}
-	p := w.catalog.Profiles[id]
-	if len(p.Applications) == 0 && len(p.Alternatives) == 0 {
-		if len(p.Optional) > 0 {
-			fmt.Fprintln(w.output, "Aplicaciones incluidas como opciones futuras:")
-			for _, appID := range p.Optional {
-				if app, ok := w.catalog.Apps[appID]; ok {
-					fmt.Fprintf(w.output, "  - %s: pendiente de instalación verificada\n", app.Name)
-				}
-			}
-			fmt.Fprintln(w.output, "No se instalará ninguna de ellas automáticamente.")
-		} else {
-			fmt.Fprintln(w.output, "Este perfil aún no contiene aplicaciones verificadas.")
-		}
-		return
-	}
-	if w.execute("plan", "--profile", id) != 0 {
-		fmt.Fprintln(w.output, "Plan no disponible; no se ha instalado nada.")
-		return
-	}
-	answer, ok := w.ask("\n1) Instalar lo pendiente  2) Solo revisar  0) Volver\nOpción: ")
+	answer, ok := w.ask("\n1) Instalar lo que falte  2) Volver sin cambios\nOpción: ")
 	if !ok || answer != "1" {
 		return
 	}
 	if !w.confirm() {
-		fmt.Fprintln(w.output, "Cancelado. Sin instalaciones autorizadas.")
+		fmt.Fprintln(w.output, "Cancelado. No se ha autorizado ninguna instalación.")
 		return
 	}
-	if w.execute("apply", "--profile", id, "--yes") != 0 {
-		fmt.Fprintln(w.output, "Perfil incompleto. Consulta los errores antes de reintentar.")
+	if w.execute("setup", "--yes") != 0 {
+		fmt.Fprintln(w.output, "La preparación no se completó. Revisa los errores para reintentar.")
 	}
 }
 func (w *wizard) apps() {
@@ -161,12 +123,12 @@ func (w *wizard) apps() {
 	}
 }
 func (w *wizard) run() int {
-	fmt.Fprintln(w.output, "SOVEREIGN — Asistente de software libre")
+	fmt.Fprintln(w.output, "SOVEREIGN — Preparar y disfrutar")
 	fmt.Fprintln(w.output, "Local-first | Multisuite opcional")
 	for {
-		fmt.Fprintln(w.output, "\n1) Seleccionar e instalar un perfil")
-		fmt.Fprintln(w.output, "2) Consultar estado de un perfil")
-		fmt.Fprintln(w.output, "3) Instalar una aplicación")
+		fmt.Fprintln(w.output, "\n1) Preparar este equipo")
+		fmt.Fprintln(w.output, "2) Comprobar el entorno")
+		fmt.Fprintln(w.output, "3) Aplicaciones adicionales")
 		fmt.Fprintln(w.output, "4) Explorar catálogo")
 		fmt.Fprintln(w.output, "5) Diagnóstico del equipo")
 		fmt.Fprintln(w.output, "6) Opciones avanzadas")
@@ -180,11 +142,9 @@ func (w *wizard) run() int {
 		}
 		switch n {
 		case 1:
-			w.profile()
+			w.prepare()
 		case 2:
-			if id, ok := w.pickProfile(); ok {
-				w.execute("status", "--profile", id)
-			}
+			w.execute("status")
 		case 3:
 			w.apps()
 		case 4:
@@ -195,8 +155,8 @@ func (w *wizard) run() int {
 			fmt.Fprintln(w.output, "Comandos avanzados desde PowerShell o bash:")
 			fmt.Fprintln(w.output, "  sovereign status --json")
 			fmt.Fprintln(w.output, "  sovereign plan --profile essential --verbose")
-			fmt.Fprintln(w.output, "  sovereign profiles list")
-			fmt.Fprintln(w.output, "  sovereign apply --profile essential --yes")
+			fmt.Fprintln(w.output, "  sovereign setup --yes")
+			fmt.Fprintln(w.output, "  sovereign status --verbose")
 		case 7:
 			if runtime.GOOS == "windows" {
 				w.execute("privacy", "audit")

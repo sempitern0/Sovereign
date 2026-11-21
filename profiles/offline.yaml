@@ -1,8 +1,0 @@
-schema_version: 1
-id: offline
-name: Biblioteca offline
-description: Propuesta de mapas y conocimiento sin conexión. Descarga de ZIM y regiones de mapas aún no implementada.
-applications: []
-optional:
-  - kiwix
-  - comaps

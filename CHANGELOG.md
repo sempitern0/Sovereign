@@ -2,6 +2,8 @@
 
 ## Unreleased — H3 + H4
 
+- Personal single-setup UX: remove unused profile choices, keep only the internal essential installation definition, add `setup [--yes]` and simplify the wizard to prepare/check/extra tools. Keep `--profile essential` compatibility and JSON schema v1.
+
 - Catalog: Kiwix, CoMaps and WinHance as optional, unapproved packages; offline knowledge and map data lifecycle documented.
 - Windows: read-only privacy inventory with structured JSON, no service/process modifications; wizard entries for privacy audit and offline library.
 

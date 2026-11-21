@@ -25,7 +25,7 @@ Las claves pueden no existir o no aplicar según edición, versión, GPO/MDM o p
 - La publicación de WinHance en el catálogo **no autoriza ninguna modificación**.
 
 ## Futuro módulo `privacy plan/apply/restore`
-Cada ajuste requerirá un identificador estable, compatibilidad Windows 10/11, perfil `balanced/advanced`, impacto, detección precisa, copia de seguridad, comando de aplicación, verificación y reversión ensayada. Nunca cambiar silenciosamente:
+Cada ajuste requerirá un identificador estable, compatibilidad Windows 10/11, nivel de riesgo `balanced/advanced` por ajuste, sin perfiles de instalación, impacto, detección precisa, copia de seguridad, comando de aplicación, verificación y reversión ensayada. Nunca cambiar silenciosamente:
 - Microsoft Defender, SmartScreen, firewall, UAC, Windows Update, BitLocker o Secure Boot.
 - Servicios de red, DNS, VPN, logs de seguridad, EDR, acceso remoto, componentes de dominio/MDM o funciones de accesibilidad.
 - Procesos del sistema basándose solo en su nombre o uso momentáneo de CPU.
