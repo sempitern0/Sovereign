@@ -75,17 +75,21 @@ func TestWizardEOF(t *testing.T) {
 func TestWizardOfflineAndPrivacyMenusStayReadOnly(t *testing.T) {
 	var out bytes.Buffer
 	var called []string
-	w:=newWizard(strings.NewReader("7\n8\n0\n"),&out,func(args ...string)int{
-		called=append(called,strings.Join(args," "))
+	w := newWizard(strings.NewReader("7\n8\n0\n"), &out, func(args ...string) int {
+		called = append(called, strings.Join(args, " "))
 		return 0
-	},fixtureWizard())
-	if rc:=w.run();rc!=0 {t.Fatal(rc)}
-	if !strings.Contains(out.String(),"Kiwix") || !strings.Contains(out.String(),"CoMaps") {
+	}, fixtureWizard())
+	if rc := w.run(); rc != 0 {
+		t.Fatal(rc)
+	}
+	if !strings.Contains(out.String(), "Kiwix") || !strings.Contains(out.String(), "CoMaps") {
 		t.Fatal("offline library guidance missing")
 	}
-	if runtime.GOOS=="windows" {
-		if len(called)!=1 || called[0]!="privacy audit" {t.Fatalf("wrong audit: %v",called)}
-	} else if len(called)!=0 {
-		t.Fatalf("unsupported system invoked privacy: %v",called)
+	if runtime.GOOS == "windows" {
+		if len(called) != 1 || called[0] != "privacy audit" {
+			t.Fatalf("wrong audit: %v", called)
+		}
+	} else if len(called) != 0 {
+		t.Fatalf("unsupported system invoked privacy: %v", called)
 	}
 }
