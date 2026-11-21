@@ -9,13 +9,26 @@ capabilities:
   - offline_reading
 platforms:
   windows:
-    status: pending
-    provider: manual
-    notes: Kiwix Desktop tiene distribuciones oficiales, pero falta revisión de un instalador automatizable y de su firma.
+    status: verified
+    provider: winget
+    package_id: Kiwix.KiwixJS.Electron
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/k/Kiwix/KiwixJS/Electron/3.9.3-E/Kiwix.KiwixJS.Electron.installer.yaml
+    verified_at: "2026-11-21"
+    scope: user
+    provenance: upstream
+    notes: >-
+      Kiwix JS Electron (WinGet manifest 3.9.3-E, publisher Kiwix, GPL-3.0, released
+      2026-09-29). NSIS x86 installer from github.com/kiwix/kiwix-js-pwa releases with
+      pinned SHA-256; the manifest offers a user-scope installer (/CURRENTUSER), so no
+      administrator prompt. No package dependencies. Kiwix Desktop is not published on
+      WinGet; Kiwix JS is Kiwix's own reader and downloads ZIM archives in the app.
   linux:
     status: pending
     provider: flatpak
-    notes: Flathub usa org.kiwix.desktop; antes de habilitar la instalación hay que validar rama, mantenimiento, procedencia y aceptación real.
+    notes: >-
+      Flathub org.kiwix.desktop 2.4.1 has not been updated since 2024-12 and uses the
+      unsupported org.kde.Platform 5.15-23.08 runtime; not allowlisted until a
+      maintained package exists (maintainer decision 2026-11-21).
   android:
     status: pending
     provider: fdroid

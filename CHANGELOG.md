@@ -2,6 +2,8 @@
 
 ## Unreleased — H3 + H4
 
+- Kiwix: verify and allowlist Windows/WinGet `Kiwix.KiwixJS.Electron` (user scope, upstream) and add it to the single setup; Linux stays pending (Flathub `org.kiwix.desktop` unmaintained since 2024-12, EOL runtime).
+
 - CoMaps: verify and allowlist Linux/Flathub `app.comaps.comaps` (user scope, community) and add it to the single setup; Windows stays pending (WinGet manifest declares no scope). Plan output groups setup apps not yet available on the current platform as skipped instead of "to review".
 
 - Catalog: remove WinHance (PolyForm Shield, not free software); the privacy audit no longer links to it. Fix README reference to the removed offline profile.
