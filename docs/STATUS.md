@@ -79,6 +79,8 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Registro de iteración
 
+- **2026-11-21 · chore/remove-winhance · Retirar WinHance.** Decisión del mantenedor: solo software libre en el catálogo. Eliminado `catalog/apps/winhance.yaml` y el enlace en `privacy audit`; test que impide reintroducirlo; README corregido (seguía citando `profiles/offline.yaml`, eliminado en #13). Pruebas (entorno del agente, Linux, simulado): gofmt, go vet, go test, validador de catálogo y 22 tests Python en verde. No ejecutado: CI Windows (la ejecuta GitHub).
+
 - **2026-11-21 · feat/single-setup-experience · Instalación personal unificada.** Eliminada la selección de perfiles y los YAML vacíos de Offline, Multimedia y Avanzado. Un único `setup` inspecciona y prepara el equipo; `setup --yes` usa la allowlist, consentimiento, journal e idempotencia existentes. `essential` sigue como identificador interno para compatibilidad. Mapas/Wikipedia y privacidad pasan a opciones específicas, sin prometer automatización aún no implementada. Pruebas Windows/Linux y CI pendientes.
 
 
