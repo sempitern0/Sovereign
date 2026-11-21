@@ -2,7 +2,7 @@
 
 Fuente única del estado del proyecto y de la **siguiente acción**. Actualizarla al final de cada iteración (ver «Registro de iteración»). El chat o la memoria de un agente no son el registro del proyecto.
 
-Última actualización: 2026-11-19.
+Última actualización: 2026-11-21.
 
 ## Hitos
 
@@ -78,6 +78,9 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 - La detección «no instalado» de WinGet conserva un texto en inglés solo como respaldo; la señal principal es el código de salida.
 
 ## Registro de iteración
+
+- **2026-11-21 · feat/single-setup-experience · Instalación personal unificada.** Eliminada la selección de perfiles y los YAML vacíos de Offline, Multimedia y Avanzado. Un único `setup` inspecciona y prepara el equipo; `setup --yes` usa la allowlist, consentimiento, journal e idempotencia existentes. `essential` sigue como identificador interno para compatibilidad. Mapas/Wikipedia y privacidad pasan a opciones específicas, sin prometer automatización aún no implementada. Pruebas Windows/Linux y CI pendientes.
+
 
 - **2026-11-21 · feat/offline-knowledge-windows-privacy · Biblioteca offline y privacidad Windows.** Catálogo opcional inicial para Kiwix, CoMaps y WinHance con licencias y procedencia diferenciadas. Auditoría Windows de solo lectura, sin modificación de telemetría, servicios ni procesos; asistente ampliado. ZIM y mapas todavía requieren descarga independiente y no hay nuevas apps en la allowlist. CI y QA pendientes.
 

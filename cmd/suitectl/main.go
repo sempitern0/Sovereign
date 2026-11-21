@@ -58,6 +58,24 @@ func run(args []string) int {
 		return 0
 	}
 	switch args[0] {
+	case "setup":
+		fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+		fs.SetOutput(os.Stderr)
+		yes := fs.Bool("yes", false, "Authorize installation of missing, reviewed software")
+		verbose := fs.Bool("verbose", false, "Show all applications and diagnostic details")
+		nonInteractive := fs.Bool("non-interactive", false, "Do not attach package managers to the terminal")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		if fs.NArg() != 0 {
+			return usageError("setup takes no positional arguments")
+		}
+		c, err := loadCatalog("")
+		if err != nil {
+			return loadError(err)
+		}
+		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
+		return applyProfile(c, "essential", *yes, engine, *verbose)
 	case "privacy":
 		return runPrivacy(args[1:])
 	case "wizard":
@@ -444,6 +462,7 @@ func loadError(err error) int {
 func usage() {
 	fmt.Println("Sovereign — local-first environment orchestrator")
 	fmt.Println("Usage: suitectl [wizard] (interactive terminal)")
+	fmt.Println("       suitectl setup [--yes] [--verbose] [--non-interactive] (single installation flow)")
 	fmt.Println("       suitectl doctor [--json] | version [--json]")
 	fmt.Println("       suitectl catalog list [--platform windows|linux|android] [--json]")
 	fmt.Println("       suitectl profiles list [--json]")

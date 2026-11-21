@@ -1,7 +1,7 @@
 schema_version: 1
 id: essential
-name: Esencial
-description: Primer perfil local-first para escritorio.
+name: Sovereign
+description: Configuración única para equipos nuevos o existentes; instala únicamente aplicaciones aprobadas que falten.
 applications:
   - localsend
   - vlc
