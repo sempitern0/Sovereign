@@ -1,0 +1,17 @@
+schema_version: 1
+id: winhance
+name: WinHance
+category: utilities
+license: PolyForm-Shield-1.0.0
+upstream: https://github.com/memstechtips/Winhance
+description: Herramienta externa opcional para revisar configuración y privacidad de Windows; código disponible con licencia restrictiva, no OSI.
+capabilities:
+  - windows_customization
+platforms:
+  windows:
+    status: pending
+    provider: manual
+    notes: No se instala ni ejecuta automáticamente. Consultar releases oficiales y licencia PolyForm Shield; evitar pipelines remotos de PowerShell.
+  linux:
+    status: unsupported
+    provider: none
