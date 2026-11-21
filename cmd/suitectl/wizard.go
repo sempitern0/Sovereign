@@ -51,6 +51,7 @@ func (w *wizard) confirm() bool {
 	answer, ok := w.ask("Para autorizar la instalación escribe SI: ")
 	return ok && strings.EqualFold(answer, "SI")
 }
+
 // prepare follows one stable installation definition. No profile selection or
 // machine modification occurs before the user reviews the local plan.
 func (w *wizard) prepare() {
