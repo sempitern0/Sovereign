@@ -7,8 +7,10 @@ import (
 
 // Cache memoizes read-only provider output for the duration of one command, so
 // a profile with several Flatpak applications lists installed applications and
-// remotes once instead of once per application. It is safe for concurrent use;
-// concurrent callers of the same query wait for a single provider call.
+// remotes once instead of once per application, and a WinGet package inspected
+// by the plan is not queried again before installing. It is safe for concurrent
+// use: Flatpak callers wait for a single provider call, while WinGet queries for
+// different packages run without holding the lock.
 //
 // Only successful results are cached: a failed inspection is retried by the next
 // caller and never turns into "missing". Any install invalidates the installed
@@ -17,6 +19,7 @@ type Cache struct {
 	mu          sync.Mutex
 	flatpakApps *string
 	flathubOK   bool
+	winget      map[string]State // by package ID
 }
 
 // NewCache returns an empty cache for one command run.
@@ -57,12 +60,40 @@ func (c *Cache) flathub(ctx context.Context, check func(context.Context) error) 
 	return nil
 }
 
-// invalidate forgets installed-package state after a host change.
+// wingetStatus returns the cached state of one WinGet package or inspects it.
+// The lock is not held while WinGet runs, so different packages are inspected
+// concurrently.
+func (c *Cache) wingetStatus(ctx context.Context, id string, inspect func(context.Context) (State, error)) (State, error) {
+	if c == nil {
+		return inspect(ctx)
+	}
+	c.mu.Lock()
+	state, ok := c.winget[id]
+	c.mu.Unlock()
+	if ok {
+		return state, nil
+	}
+	state, err := inspect(ctx)
+	if err != nil {
+		return "", err
+	}
+	c.mu.Lock()
+	if c.winget == nil {
+		c.winget = map[string]State{}
+	}
+	c.winget[id] = state
+	c.mu.Unlock()
+	return state, nil
+}
+
+// invalidate forgets all installed-package state after a host change (an
+// install may also add declared dependencies).
 func (c *Cache) invalidate() {
 	if c == nil {
 		return
 	}
 	c.mu.Lock()
 	c.flatpakApps = nil
+	c.winget = nil
 	c.mu.Unlock()
 }

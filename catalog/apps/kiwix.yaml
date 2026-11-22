@@ -29,9 +29,10 @@ platforms:
     source: https://github.com/flathub/org.kiwix.desktop/blob/master/org.kiwix.desktop.json
     verified_at: "2026-11-22"
     scope: user
-    provenance: upstream
+    provenance: community
     notes: >-
-      Flathub org.kiwix.desktop 2.4.1, maintained in github.com/flathub/org.kiwix.desktop by
-      the Kiwix bot. Risk accepted by the maintainer on 2026-11-22: no update since
+      Flathub org.kiwix.desktop 2.4.1, maintained in github.com/flathub/org.kiwix.desktop (last
+      commit by the Kiwix bot). Recorded as community: Flathub verification by the Kiwix
+      project could not be confirmed. Risk accepted by the maintainer on 2026-11-22: no update since
       2024-12 and the org.kde.Platform 5.15-23.08 runtime is end-of-life (no security
       updates). Revisit when Kiwix publishes a newer Flatpak.

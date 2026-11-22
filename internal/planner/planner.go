@@ -27,7 +27,7 @@ type Operation struct {
 	Status       string `json:"status"`
 	Reason       string `json:"reason"`
 	Verification string `json:"verification,omitempty"`
-	// Scope ("user" or "machine") and Provenance ("upstream" or "community")
+	// Scope (catalog.Scope*) and Provenance ("upstream" or "community")
 	// come from verified catalog entries so the user sees them before consenting.
 	Scope                string   `json:"scope,omitempty"`
 	Provenance           string   `json:"provenance,omitempty"`
@@ -157,11 +157,8 @@ func Build(c catalog.Catalog, profileID string, device Device) (Plan, error) {
 // Notices returns short warnings a user must see before authorizing an install.
 func (op Operation) Notices() []string {
 	var notices []string
-	switch op.Scope {
-	case "machine":
-		notices = append(notices, "installs for all users: Windows will ask for administrator approval")
-	case "unspecified":
-		notices = append(notices, "the package does not declare its install scope: Windows may ask for administrator approval")
+	if notice := catalog.ScopeNotice(op.Scope); notice != "" {
+		notices = append(notices, notice)
 	}
 	if op.Provenance == "community" {
 		notices = append(notices, "community-built package, not endorsed by the upstream project")

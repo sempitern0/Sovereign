@@ -110,7 +110,7 @@ type Target struct {
 
 // NeedsAdminApproval reports whether installing triggers, or may trigger, an OS
 // elevation prompt (machine scope, or a manifest that declares no scope).
-func (t Target) NeedsAdminApproval() bool { return t.Scope == "machine" || t.Scope == "unspecified" }
+func (t Target) NeedsAdminApproval() bool { return catalog.ScopeMayElevate(t.Scope) }
 
 // Resolve fails closed on unsupported platforms, unverified catalog entries,
 // unexpected sources, or unreviewed apps. It uses the same allowlist that Status
@@ -208,32 +208,41 @@ func (e Engine) Status(ctx context.Context, t Target) (State, error) {
 		}
 		return Missing, nil
 	case "winget":
-		out, err := e.Runner.Run(ctx, "winget", "list", "--id", t.PackageID, "--exact", "--source", "winget", "--disable-interactivity")
-		if err != nil {
-			// Never turn an arbitrary failure into "missing".
-			var exit *exec.ExitError
-			if errors.As(err, &exit) && uint32(exit.ExitCode()) == wingetNoApplicationsFound {
-				return Missing, nil
-			}
-			return "", fmt.Errorf("cannot reliably inspect WinGet state: %w", err)
-		}
-		for _, line := range strings.Split(out, "\n") {
-			for _, field := range strings.Fields(line) {
-				if field == t.PackageID {
-					return Installed, nil
-				}
-			}
-		}
-		// Legacy WinGet builds may exit 0 with this English message. The exit
-		// code above is the locale-independent signal; anything else unknown
-		// still fails closed.
-		if strings.Contains(out, "No installed package found matching input criteria.") {
-			return Missing, nil
-		}
-		return "", errors.New("unrecognized WinGet list output; refusing installation")
+		return e.Cache.wingetStatus(ctx, t.PackageID, func(ctx context.Context) (State, error) {
+			return e.wingetStatus(ctx, t.PackageID)
+		})
 	default:
 		return "", errors.New("unsupported provider")
 	}
+}
+
+// wingetStatus inspects one package with `winget list`. The exit code
+// NO_APPLICATIONS_FOUND is the locale-independent "missing" signal; anything
+// unrecognized fails closed.
+func (e Engine) wingetStatus(ctx context.Context, id string) (State, error) {
+	out, err := e.Runner.Run(ctx, "winget", "list", "--id", id, "--exact", "--source", "winget", "--disable-interactivity")
+	if err != nil {
+		// Never turn an arbitrary failure into "missing".
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && uint32(exit.ExitCode()) == wingetNoApplicationsFound {
+			return Missing, nil
+		}
+		return "", fmt.Errorf("cannot reliably inspect WinGet state: %w", err)
+	}
+	for _, line := range strings.Split(out, "\n") {
+		for _, field := range strings.Fields(line) {
+			if field == id {
+				return Installed, nil
+			}
+		}
+	}
+	// Legacy WinGet builds may exit 0 with this English message. The exit
+	// code above is the locale-independent signal; anything else unknown
+	// still fails closed.
+	if strings.Contains(out, "No installed package found matching input criteria.") {
+		return Missing, nil
+	}
+	return "", errors.New("unrecognized WinGet list output; refusing installation")
 }
 
 func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, error) {
@@ -260,7 +269,7 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 		program, args = "flatpak", []string{"install", "--user", "--noninteractive", "flathub", t.PackageID}
 	case "winget":
 		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade"}
-		if t.Scope != "unspecified" {
+		if t.Scope != catalog.ScopeUnspecified {
 			args = append(args, "--scope", t.Scope)
 		}
 	default:

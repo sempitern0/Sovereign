@@ -96,3 +96,36 @@ func TestNilCacheKeepsPreviousBehaviour(t *testing.T) {
 		t.Fatalf("without a cache every inspection calls the provider: %+v", f.calls)
 	}
 }
+
+// The plan's inspection is reused by Apply: one `winget list` before the
+// install (not two) and the mandatory verification afterwards.
+func TestCacheReusesWingetInspectionBeforeInstall(t *testing.T) {
+	target := comapsWindowsTarget(t)
+	f := &interactiveRunner{fakeRunner: fakeRunner{output: []string{
+		"No installed package found matching input criteria.", // inspection
+		"CoMaps CoMaps.CoMaps 2026.06.13 winget",              // verification
+	}}}
+	e := Engine{Runner: f, Platform: "windows", Interactive: true, Cache: NewCache()}
+	if state, err := e.Status(context.Background(), target); err != nil || state != Missing {
+		t.Fatalf("state %v err %v", state, err)
+	}
+	result, err := e.Apply(context.Background(), target, true)
+	if err != nil || !result.Changed || result.State != Installed {
+		t.Fatalf("result %+v err %v", result, err)
+	}
+	if got := countCalls(f.calls, "winget", "list"); got != 2 || len(f.interactive) != 1 {
+		t.Fatalf("want 2 winget list calls and 1 install, got %d lists: %+v / %+v", got, f.calls, f.interactive)
+	}
+}
+
+func TestCacheDoesNotKeepFailedWingetInspections(t *testing.T) {
+	target := comapsWindowsTarget(t)
+	f := &fakeRunner{output: []string{"", "CoMaps CoMaps.CoMaps 2026.06.13 winget"}, errors: []error{errors.New("boom"), nil}}
+	e := Engine{Runner: f, Platform: "windows", Cache: NewCache()}
+	if _, err := e.Status(context.Background(), target); err == nil {
+		t.Fatal("failure must surface, never become missing")
+	}
+	if state, err := e.Status(context.Background(), target); err != nil || state != Installed || len(f.calls) != 2 {
+		t.Fatalf("state %v err %v calls %d", state, err, len(f.calls))
+	}
+}

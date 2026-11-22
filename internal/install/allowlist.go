@@ -28,9 +28,11 @@ type AllowEntry struct {
 
 // providerScopes lists the install scopes each implemented provider supports.
 // Flatpak installs are always per user; system installs would need root.
-// "unspecified" means the WinGet manifest declares no Scope: no --scope flag is
-// passed and WinGet picks the installer, which may ask for administrator approval.
-var providerScopes = map[string][]string{"winget": {"user", "machine", "unspecified"}, "flatpak": {"user"}}
+// Scope meanings live in the catalog package (catalog.ScopeMayElevate).
+var providerScopes = map[string][]string{
+	"winget":  {catalog.ScopeUser, catalog.ScopeMachine, catalog.ScopeUnspecified},
+	"flatpak": {catalog.ScopeUser},
+}
 
 // Allowlist is the set of packages H2 may install, independent of the catalog.
 type Allowlist struct {

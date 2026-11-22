@@ -60,7 +60,7 @@ entries:
     package_id: org.kiwix.desktop
     source: https://github.com/flathub/org.kiwix.desktop/blob/master/org.kiwix.desktop.json
     scope: user
-    provenance: upstream
+    provenance: community
   - application: libreoffice
     upstream: https://www.libreoffice.org/
     platform: windows

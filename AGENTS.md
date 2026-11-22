@@ -47,7 +47,8 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 
 ## Performance
 - Each command inspects every package manager at most once per state: reuse cached `flatpak list`/`remotes` output within one run and invalidate it after an install. WinGet inspections may run concurrently (bounded); a failure is `inspection_failed`, never "missing".
-- Do not re-inspect what the same command has just inspected, except the mandatory verification after installing.
+- Do not re-inspect what the same command has just inspected, except the mandatory verification after installing: `install.Cache` keeps WinGet state per package ID and Flatpak lists per run, and `Apply`'s pre-install check reuses them.
+- Scope semantics have one owner: `internal/catalog` (`Scope*` constants, `ScopeMayElevate`, `ScopeNotice`). Do not compare scope strings elsewhere in Go.
 - Tests assert provider call counts so regressions in the number of package-manager calls are caught.
 
 ## Quality checks
