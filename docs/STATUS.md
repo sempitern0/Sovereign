@@ -82,6 +82,9 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 
 ## Registro de iteración
 
+- **2026-11-22 · feat/linux-desktop-launchers.** Integración XDG/Xfce: sincronización por usuario de archivos `.desktop` ya exportados por Flatpak aprobado, accesos en menú y escritorio existente, rutas XDG y protección de archivos del usuario. Se vuelve a sincronizar al preparar un equipo ya instalado; fallos de GUI se registran como aviso, sin convertir una instalación correcta en fallida. CI y validación real Xubuntu pendientes.
+
+
 - **2026-11-22 · feat/linux-flatpak-prerequisites.** Se automatiza la preparación de Flatpak cuando falta en Linux reconocido, con permiso expreso (`setup --yes`) y elevación visible, seguida de verificación de Flathub en ámbito de usuario. Un remoto con URL distinta impide la instalación; `plan` continúa siendo de lectura. Nuevos tests de distribución, idempotencia y fallos. **QA en máquinas Linux limpias pendiente.**
 
 

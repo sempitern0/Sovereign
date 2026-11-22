@@ -17,6 +17,8 @@ import (
 // TestMain keeps every test away from the user's real state directory and from
 // real provider detection.
 func TestMain(m *testing.M) {
+	// Prevent simulated package installs from writing launchers to the CI user's desktop.
+	desktopSync = func(string) (int, error) { return 0, nil }
 	dir, err := os.MkdirTemp("", "suitectl-state-")
 	if err != nil {
 		panic(err)
