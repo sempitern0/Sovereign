@@ -87,6 +87,21 @@ func findExport(home, id string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := filepath.EvalSymlinks(name)
+			if err != nil {
+				return "", fmt.Errorf("resolve Flatpak launcher export: %w", err)
+			}
+			userRoot := filepath.Join(home, ".local", "share", "flatpak", "app", id)
+			systemRoot := filepath.Join("/var/lib/flatpak/app", id)
+			if !withinRoot(userRoot, target) && !withinRoot(systemRoot, target) {
+				return "", fmt.Errorf("Flatpak launcher symlink escapes the app's install root: %s", name)
+			}
+			info, err = os.Stat(name)
+			if err != nil {
+				return "", err
+			}
+		}
 		if !info.Mode().IsRegular() {
 			return "", fmt.Errorf("exported desktop entry is not a regular file: %s", name)
 		}
@@ -229,6 +244,19 @@ func desktopDir(home string) (string, bool) {
 	}
 	info, err := os.Lstat(candidate)
 	return candidate, err == nil && info.IsDir() && info.Mode()&fs.ModeSymlink == 0
+}
+
+func withinRoot(root, path string) bool {
+	base, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	target, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(base, target)
+	return err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 func withinHome(home, path string) bool {
