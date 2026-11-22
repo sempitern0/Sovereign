@@ -400,9 +400,12 @@ func cmdApplyOrVerify(args []string) int {
 		}
 		return 3
 	}
+	if errors.Is(err, install.ErrFlathubRemoteConflict) {
+		fmt.Fprintln(os.Stderr, "An existing Flathub remote has an untrusted URL; Sovereign will not overwrite it.")
+		return 1
+	}
 	if errors.Is(err, install.ErrFlathubRemoteMissing) {
-		fmt.Fprintln(os.Stderr, "Sovereign does not add package repositories. Add the official Flathub user remote yourself, then retry:")
-		fmt.Fprintln(os.Stderr, "  "+install.FlathubRemoteCommand)
+		fmt.Fprintln(os.Stderr, "Flathub could not be verified after configuration. No applications were installed.")
 		return 1
 	}
 	if errors.Is(err, install.ErrAdminApprovalNeedsTerminal) {
