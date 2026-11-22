@@ -3,6 +3,7 @@ package desktop
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -36,7 +37,7 @@ func TestSyncCreatesMenuAndDesktopIdempotently(t *testing.T) {
 			t.Fatalf("invalid launcher %s %s %v", p, b, err)
 		}
 		st, _ := os.Stat(p)
-		if st.Mode().Perm() != 0755 {
+		if runtime.GOOS != "windows" && st.Mode().Perm() != 0755 {
 			t.Fatalf("not executable: %v", st.Mode())
 		}
 	}
