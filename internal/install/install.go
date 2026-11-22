@@ -46,7 +46,7 @@ var ErrFlathubRemoteMissing = errors.New("official user Flathub remote missing; 
 
 // ErrAdminApprovalNeedsTerminal stops a machine-scope install that would trigger
 // an administrator prompt nobody is attending.
-var ErrAdminApprovalNeedsTerminal = errors.New("this package installs for all users and Windows will ask for administrator approval; run apply from an interactive terminal")
+var ErrAdminApprovalNeedsTerminal = errors.New("Windows may ask for administrator approval for this package; run apply from an interactive terminal")
 
 // ErrNotDetectedAfterInstall means the package manager reported success but the
 // package is not visible afterwards.
@@ -93,6 +93,9 @@ type Engine struct {
 	Interactive    bool
 	InspectTimeout time.Duration
 	InstallTimeout time.Duration
+	// Cache, when set, reuses read-only provider output within one command.
+	// Nil disables caching (every inspection calls the provider).
+	Cache *Cache
 }
 
 type Target struct {
@@ -105,8 +108,9 @@ type Target struct {
 	ProviderDependencies []string
 }
 
-// NeedsAdminApproval reports whether installing triggers an OS elevation prompt.
-func (t Target) NeedsAdminApproval() bool { return t.Scope == "machine" }
+// NeedsAdminApproval reports whether installing triggers, or may trigger, an OS
+// elevation prompt (machine scope, or a manifest that declares no scope).
+func (t Target) NeedsAdminApproval() bool { return catalog.ScopeMayElevate(t.Scope) }
 
 // Resolve fails closed on unsupported platforms, unverified catalog entries,
 // unexpected sources, or unreviewed apps. It uses the same allowlist that Status
@@ -191,7 +195,9 @@ func (e Engine) Status(ctx context.Context, t Target) (State, error) {
 	defer cancel()
 	switch t.Provider {
 	case "flatpak":
-		out, err := e.Runner.Run(ctx, "flatpak", "list", "--app", "--columns=application")
+		out, err := e.Cache.flatpakList(ctx, func(ctx context.Context) (string, error) {
+			return e.Runner.Run(ctx, "flatpak", "list", "--app", "--columns=application")
+		})
 		if err != nil {
 			return "", fmt.Errorf("cannot list Flatpak applications: %w", err)
 		}
@@ -202,32 +208,41 @@ func (e Engine) Status(ctx context.Context, t Target) (State, error) {
 		}
 		return Missing, nil
 	case "winget":
-		out, err := e.Runner.Run(ctx, "winget", "list", "--id", t.PackageID, "--exact", "--source", "winget", "--disable-interactivity")
-		if err != nil {
-			// Never turn an arbitrary failure into "missing".
-			var exit *exec.ExitError
-			if errors.As(err, &exit) && uint32(exit.ExitCode()) == wingetNoApplicationsFound {
-				return Missing, nil
-			}
-			return "", fmt.Errorf("cannot reliably inspect WinGet state: %w", err)
-		}
-		for _, line := range strings.Split(out, "\n") {
-			for _, field := range strings.Fields(line) {
-				if field == t.PackageID {
-					return Installed, nil
-				}
-			}
-		}
-		// Legacy WinGet builds may exit 0 with this English message. The exit
-		// code above is the locale-independent signal; anything else unknown
-		// still fails closed.
-		if strings.Contains(out, "No installed package found matching input criteria.") {
-			return Missing, nil
-		}
-		return "", errors.New("unrecognized WinGet list output; refusing installation")
+		return e.Cache.wingetStatus(ctx, t.PackageID, func(ctx context.Context) (State, error) {
+			return e.wingetStatus(ctx, t.PackageID)
+		})
 	default:
 		return "", errors.New("unsupported provider")
 	}
+}
+
+// wingetStatus inspects one package with `winget list`. The exit code
+// NO_APPLICATIONS_FOUND is the locale-independent "missing" signal; anything
+// unrecognized fails closed.
+func (e Engine) wingetStatus(ctx context.Context, id string) (State, error) {
+	out, err := e.Runner.Run(ctx, "winget", "list", "--id", id, "--exact", "--source", "winget", "--disable-interactivity")
+	if err != nil {
+		// Never turn an arbitrary failure into "missing".
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && uint32(exit.ExitCode()) == wingetNoApplicationsFound {
+			return Missing, nil
+		}
+		return "", fmt.Errorf("cannot reliably inspect WinGet state: %w", err)
+	}
+	for _, line := range strings.Split(out, "\n") {
+		for _, field := range strings.Fields(line) {
+			if field == id {
+				return Installed, nil
+			}
+		}
+	}
+	// Legacy WinGet builds may exit 0 with this English message. The exit
+	// code above is the locale-independent signal; anything else unknown
+	// still fails closed.
+	if strings.Contains(out, "No installed package found matching input criteria.") {
+		return Missing, nil
+	}
+	return "", errors.New("unrecognized WinGet list output; refusing installation")
 }
 
 func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, error) {
@@ -248,19 +263,26 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 	var args []string
 	switch t.Provider {
 	case "flatpak":
-		if err := e.requireFlathub(ctx); err != nil {
+		if err := e.Cache.flathub(ctx, e.requireFlathub); err != nil {
 			return result, err
 		}
 		program, args = "flatpak", []string{"install", "--user", "--noninteractive", "flathub", t.PackageID}
 	case "winget":
-		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade", "--scope", t.Scope}
+		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade"}
+		if t.Scope != catalog.ScopeUnspecified {
+			args = append(args, "--scope", t.Scope)
+		}
 	default:
 		return result, errors.New("unsupported provider")
 	}
 	if t.NeedsAdminApproval() && !e.attended() {
 		return result, ErrAdminApprovalNeedsTerminal
 	}
-	if err := e.install(ctx, program, args); err != nil {
+	err = e.install(ctx, program, args)
+	// The host may have changed even if the command failed: never reuse
+	// pre-install state for the verification below or for later applications.
+	e.Cache.invalidate()
+	if err != nil {
 		return result, fmt.Errorf("%s %w: %w", providerName(t.Provider), ErrInstallFailed, err)
 	}
 	result.Changed = true

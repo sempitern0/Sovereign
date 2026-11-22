@@ -28,7 +28,11 @@ type AllowEntry struct {
 
 // providerScopes lists the install scopes each implemented provider supports.
 // Flatpak installs are always per user; system installs would need root.
-var providerScopes = map[string][]string{"winget": {"user", "machine"}, "flatpak": {"user"}}
+// Scope meanings live in the catalog package (catalog.ScopeMayElevate).
+var providerScopes = map[string][]string{
+	"winget":  {catalog.ScopeUser, catalog.ScopeMachine, catalog.ScopeUnspecified},
+	"flatpak": {catalog.ScopeUser},
+}
 
 // Allowlist is the set of packages H2 may install, independent of the catalog.
 type Allowlist struct {

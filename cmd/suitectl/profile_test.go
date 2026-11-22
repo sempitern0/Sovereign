@@ -80,10 +80,9 @@ func packageIDs() (localsend, vlc, libreoffice string) {
 	return "org.localsend.localsend_app", "org.videolan.VLC", "org.libreoffice.LibreOffice"
 }
 
-// extraProfilePackages returns the application and package IDs of the
-// allowlisted setup applications on this OS beyond LocalSend, VLC and
-// LibreOffice, so tests keep working as verified apps join the single setup.
-func extraProfilePackages(t *testing.T) (apps, ids []string) {
+// profilePackages maps every setup application installable on this OS to its
+// allowlisted package ID, so tests follow the setup as verified apps join it.
+func profilePackages(t *testing.T) map[string]string {
 	t.Helper()
 	c, err := loadCatalog("")
 	if err != nil {
@@ -93,23 +92,19 @@ func extraProfilePackages(t *testing.T) (apps, ids []string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	packages := map[string]string{}
 	for _, app := range c.Profiles["essential"].Applications {
-		if app == "localsend" || app == "vlc" || app == "libreoffice" {
-			continue
-		}
 		if e, ok := allow.Lookup(app, runtime.GOOS); ok {
-			apps, ids = append(apps, app), append(ids, e.PackageID)
+			packages[app] = e.PackageID
 		}
 	}
-	return apps, ids
+	return packages
 }
 
-// allInstalled marks every allowlisted setup package on this OS as installed.
+// allInstalled marks every installable setup package on this OS as installed.
 func allInstalled(t *testing.T) map[string]bool {
-	ls, vlc, lo := packageIDs()
-	installed := map[string]bool{ls: true, vlc: true, lo: true}
-	_, extra := extraProfilePackages(t)
-	for _, id := range extra {
+	installed := map[string]bool{}
+	for _, id := range profilePackages(t) {
 		installed[id] = true
 	}
 	return installed
@@ -135,8 +130,7 @@ func TestApplyProfileNeedsOneConsentAndChangesNothingWithout(t *testing.T) {
 	withProcess(t, runner, true)
 	dir := withStateDir(t)
 	code, stderr := captureStderr(t, func() int { return run([]string{"apply", "--profile", "essential"}) })
-	extraApps, _ := extraProfilePackages(t)
-	want := fmt.Sprintf("%d application(s) would be installed: ", 2+len(extraApps))
+	want := fmt.Sprintf("%d application(s) would be installed: ", len(profilePackages(t))-1) // all but LocalSend
 	if code != 3 || !strings.Contains(stderr, want) || !strings.Contains(stderr, "--yes") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
@@ -296,5 +290,35 @@ func TestApplyProfileSkipsAppsNotVerifiedOnThisPlatform(t *testing.T) {
 		if strings.Contains(strings.Join(call, " "), "beta") {
 			t.Fatalf("pending app reached the package manager: %v", call)
 		}
+	}
+}
+
+// Guards the number of package-manager calls of `setup --yes` on Linux: one
+// inspection list, one remotes check, then one install and one verification
+// list per application (previously one list per inspection and two per install).
+func TestApplyProfileFlatpakCallBudget(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Flatpak call budget applies to Linux")
+	}
+	host := &fakeHost{installed: map[string]bool{}}
+	runner := &scriptedRunner{respond: host.respond}
+	withProcess(t, runner, false)
+	withStateDir(t)
+	if code := run([]string{"apply", "--profile", "essential", "--yes"}); code != 0 {
+		t.Fatalf("code=%d", code)
+	}
+	apps := len(profilePackages(t))
+	count := func(first string) int {
+		n := 0
+		for _, call := range append(runner.calls, runner.interactive...) {
+			if call[0] == "flatpak" && call[1] == first {
+				n++
+			}
+		}
+		return n
+	}
+	if count("install") != apps || count("list") != 1+apps || count("remotes") != 1 {
+		t.Fatalf("installs=%d lists=%d remotes=%d for %d apps: %v",
+			count("install"), count("list"), count("remotes"), apps, runner.calls)
 	}
 }

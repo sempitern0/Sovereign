@@ -122,9 +122,10 @@
         "scope": {
           "enum": [
             "user",
-            "machine"
+            "machine",
+            "unspecified"
           ],
-          "description": "Install scope; machine requires administrator approval (Windows only)."
+          "description": "Install scope; machine requires administrator approval and unspecified (manifest declares none) may require it (both Windows only)."
         },
         "provenance": {
           "enum": [

@@ -2,10 +2,11 @@
 #
 # This file is embedded into suitectl at build time and is never read from
 # --root. Each entry must match a verified catalog entry exactly. Adding an
-# entry enables real installs: it requires code review, the acceptance
-# evidence described in docs/H2_LOCALSEND.md and a rebuilt binary.
+# entry enables real installs: it requires code review and a rebuilt binary;
+# real-device acceptance (docs/H2_LOCALSEND.md) may follow the merge.
 #
-# scope: user | machine (machine = Windows asks for administrator approval).
+# scope: user | machine (Windows, UAC) | unspecified (Windows, manifest declares no
+#        Scope: no --scope is passed and UAC may appear).
 # provenance: upstream (binaries published by the upstream project) |
 #             community (built or maintained by a third party).
 # provider_dependencies: packages the provider installs itself because the
@@ -44,6 +45,22 @@ entries:
     source: https://flathub.org/apps/org.videolan.VLC
     scope: user
     provenance: community
+  - application: kiwix
+    upstream: https://www.kiwix.org/
+    platform: windows
+    provider: winget
+    package_id: Kiwix.KiwixJS.Electron
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/k/Kiwix/KiwixJS/Electron/3.9.3-E/Kiwix.KiwixJS.Electron.installer.yaml
+    scope: user
+    provenance: upstream
+  - application: kiwix
+    upstream: https://www.kiwix.org/
+    platform: linux
+    provider: flatpak
+    package_id: org.kiwix.desktop
+    source: https://github.com/flathub/org.kiwix.desktop/blob/master/org.kiwix.desktop.json
+    scope: user
+    provenance: community
   - application: libreoffice
     upstream: https://www.libreoffice.org/
     platform: windows
@@ -56,6 +73,16 @@ entries:
       - Microsoft.VCRedist.2015+.x64
       - Microsoft.VCRedist.2015+.x86
       - Microsoft.VCRedist.2015+.arm64
+  - application: comaps
+    upstream: https://www.comaps.app/
+    platform: windows
+    provider: winget
+    package_id: CoMaps.CoMaps
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/c/CoMaps/CoMaps/2026.06.13-1-0839e6d4/CoMaps.CoMaps.installer.yaml
+    scope: unspecified
+    provenance: upstream
+    provider_dependencies:
+      - Microsoft.VCRedist.2015+.x64
   - application: comaps
     upstream: https://www.comaps.app/
     platform: linux

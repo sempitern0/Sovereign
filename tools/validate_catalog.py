@@ -55,10 +55,10 @@ def validate(root: Path) -> list[str]:
                         if status == "verified":
                             if provider == "none" or not all(config.get(field) for field in ("package_id", "source", "verified_at")):
                                 raise ValueError(f"{platform}: verified requires package_id, source and verified_at")
-                            if config.get("scope") not in ("user", "machine") or config.get("provenance") not in ("upstream", "community"):
-                                raise ValueError(f"{platform}: verified requires scope (user|machine) and provenance (upstream|community)")
-                            if config["scope"] == "machine" and platform != "windows":
-                                raise ValueError(f"{platform}: machine scope is only supported on windows")
+                            if config.get("scope") not in ("user", "machine", "unspecified") or config.get("provenance") not in ("upstream", "community"):
+                                raise ValueError(f"{platform}: verified requires scope (user|machine|unspecified) and provenance (upstream|community)")
+                            if config["scope"] != "user" and platform != "windows":
+                                raise ValueError(f"{platform}: {config['scope']} scope is only supported on windows")
                             if dt.date.fromisoformat(config["verified_at"]) > dt.date.today():
                                 raise ValueError(f"{platform}: verified_at is in the future")
                         if status != "verified" and any(k in config for k in ("package_id", "scope", "provenance", "provider_dependencies")):
@@ -129,7 +129,7 @@ def validate(root: Path) -> list[str]:
 ALLOW_FIELDS = {"application", "upstream", "platform", "provider", "package_id", "source", "scope", "provenance"}
 OPTIONAL_ALLOW_FIELDS = {"provider_dependencies"}
 IMPLEMENTED_PROVIDERS = {"windows": "winget", "linux": "flatpak"}
-ALLOWED_SCOPES = {"winget": ("user", "machine"), "flatpak": ("user",)}
+ALLOWED_SCOPES = {"winget": ("user", "machine", "unspecified"), "flatpak": ("user",)}
 
 
 def validate_allowlist(root: Path, manifests: dict[str, dict]) -> list[str]:

@@ -2,6 +2,13 @@
 
 ## Unreleased — H3 + H4
 
+- Rules (AGENTS.md, CLAUDE.md, ADR-0006 amendment): several apps per PR, real-device acceptance after merge with revert on failure, community packages accepted by default with notices.
+- Install: new `scope: unspecified` for WinGet manifests without a Scope (no `--scope` flag; treated like machine scope). CoMaps on Windows and Kiwix Desktop (Flathub, risk accepted) on Linux join the single setup.
+- Performance: per-run provider cache (`flatpak list`/`remotes` once, invalidated after each install) and bounded parallel inspection; `setup --yes` with 5 missing Flatpak apps drops from 25 to 12 package-manager calls.
+- Refactor: the CLI dispatches through a command table (one handler per subcommand) and printing lives in `output.go`.
+
+- Kiwix: verify and allowlist Windows/WinGet `Kiwix.KiwixJS.Electron` (user scope, upstream) and add it to the single setup; Linux stays pending (Flathub `org.kiwix.desktop` unmaintained since 2024-12, EOL runtime).
+
 - CoMaps: verify and allowlist Linux/Flathub `app.comaps.comaps` (user scope, community) and add it to the single setup; Windows stays pending (WinGet manifest declares no scope). Plan output groups setup apps not yet available on the current platform as skipped instead of "to review".
 
 - Catalog: remove WinHance (PolyForm Shield, not free software); the privacy audit no longer links to it. Fix README reference to the removed offline profile.

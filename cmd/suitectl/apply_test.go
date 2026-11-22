@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sempitern0/Sovereign/internal/install"
@@ -16,17 +17,22 @@ import (
 
 // scriptedRunner simulates the host package manager; tests never run real ones.
 type scriptedRunner struct {
+	mu          sync.Mutex // inspections may run concurrently
 	respond     func(program string, args []string) (string, error)
 	calls       [][]string
 	interactive [][]string
 }
 
 func (s *scriptedRunner) Run(_ context.Context, program string, args ...string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.calls = append(s.calls, append([]string{program}, args...))
 	return s.respond(program, args)
 }
 
 func (s *scriptedRunner) RunInteractive(_ context.Context, program string, args ...string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.interactive = append(s.interactive, append([]string{program}, args...))
 	_, err := s.respond(program, args)
 	return err

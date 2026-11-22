@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"runtime"
 	"sort"
 
@@ -57,388 +55,367 @@ func run(args []string) int {
 		usage()
 		return 0
 	}
-	switch args[0] {
-	case "setup":
-		fs := flag.NewFlagSet("setup", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		yes := fs.Bool("yes", false, "Authorize installation of missing, reviewed software")
-		verbose := fs.Bool("verbose", false, "Show all applications and diagnostic details")
-		nonInteractive := fs.Bool("non-interactive", false, "Do not attach package managers to the terminal")
-		if err := fs.Parse(args[1:]); err != nil {
-			return 2
+	if cmd, ok := commands[args[0]]; ok {
+		return cmd(args)
+	}
+	return usageError("unknown command: " + args[0])
+}
+
+// commands maps each subcommand to its handler; each receives the full
+// argument list (args[0] is the subcommand).
+var commands map[string]func([]string) int
+
+func init() {
+	commands = map[string]func([]string) int{
+		"setup":    cmdSetup,
+		"privacy":  cmdPrivacy,
+		"wizard":   cmdWizard,
+		"version":  cmdVersion,
+		"doctor":   cmdDoctor,
+		"catalog":  cmdList,
+		"profiles": cmdList,
+		"status":   cmdStatus,
+		"plan":     cmdPlan,
+		"apply":    cmdApplyOrVerify,
+		"verify":   cmdApplyOrVerify,
+	}
+}
+
+func cmdSetup(args []string) int {
+	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	yes := fs.Bool("yes", false, "Authorize installation of missing, reviewed software")
+	verbose := fs.Bool("verbose", false, "Show all applications and diagnostic details")
+	nonInteractive := fs.Bool("non-interactive", false, "Do not attach package managers to the terminal")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		return usageError("setup takes no positional arguments")
+	}
+	c, err := loadCatalog("")
+	if err != nil {
+		return loadError(err)
+	}
+	engine := newEngine(!*nonInteractive && isTerminal())
+	return applyProfile(c, "essential", *yes, engine, *verbose)
+}
+
+func cmdPrivacy(args []string) int {
+	return runPrivacy(args[1:])
+}
+
+func cmdWizard(args []string) int {
+	if len(args) != 1 {
+		return usageError("wizard takes no arguments")
+	}
+	return runWizard()
+}
+
+func cmdVersion(args []string) int {
+	fs := flag.NewFlagSet("version", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	machine := fs.Bool("json", false, "Machine-readable version information")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		return usageError("version takes no arguments")
+	}
+	info := VersionInfo{Version: version, Commit: commit, GoVersion: runtime.Version(), Platform: runtime.GOOS, Arch: runtime.GOARCH}
+	if *machine {
+		return printJSON(info)
+	}
+	line := "suitectl " + info.Version
+	if info.Commit != "" {
+		line += " (" + info.Commit + ")"
+	}
+	fmt.Println(line, info.GoVersion, info.Platform+"/"+info.Arch)
+	return 0
+}
+
+func cmdDoctor(args []string) int {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	machine := fs.Bool("json", false, "Print machine-readable diagnostics")
+	verbose := fs.Bool("verbose", false, "Show diagnostic details")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		return usageError("doctor: unexpected arguments")
+	}
+	report := diagnostics.Detect()
+	if *machine {
+		return printJSON(report)
+	}
+	fmt.Printf("Sovereign %s | %s/%s\n", version, report.Platform, report.Architecture)
+	names := make([]string, 0, len(report.Providers))
+	for name := range report.Providers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		status := "not found"
+		if report.Providers[name] {
+			status = "available"
 		}
-		if fs.NArg() != 0 {
-			return usageError("setup takes no positional arguments")
+		fmt.Printf("  %-10s %s\n", name, status)
+	}
+	if *verbose {
+		fmt.Println("Multisuite: optional; no connection attempted")
+	}
+	return 0
+}
+
+func cmdList(args []string) int {
+	if len(args) < 2 || args[1] != "list" {
+		return usageError(args[0] + ": expected list subcommand")
+	}
+	fs := flag.NewFlagSet(args[0]+" list", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
+	platform := fs.String("platform", "", "Filter applications by platform")
+	machine := fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args[2:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		return usageError("unexpected positional arguments")
+	}
+	if *platform != "" && *platform != "windows" && *platform != "linux" && *platform != "android" {
+		return usageError("unsupported platform")
+	}
+	c, err := loadCatalog(*root)
+	if err != nil {
+		return loadError(err)
+	}
+	if args[0] == "catalog" {
+		type entry struct {
+			ID     string `json:"id"`
+			Name   string `json:"name"`
+			Status string `json:"status,omitempty"`
 		}
-		c, err := loadCatalog("")
-		if err != nil {
-			return loadError(err)
-		}
-		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
-		return applyProfile(c, "essential", *yes, engine, *verbose)
-	case "privacy":
-		return runPrivacy(args[1:])
-	case "wizard":
-		if len(args) != 1 {
-			return usageError("wizard takes no arguments")
-		}
-		return runWizard()
-	case "version":
-		fs := flag.NewFlagSet("version", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		machine := fs.Bool("json", false, "Machine-readable version information")
-		if err := fs.Parse(args[1:]); err != nil {
-			return 2
-		}
-		if fs.NArg() != 0 {
-			return usageError("version takes no arguments")
-		}
-		info := VersionInfo{Version: version, Commit: commit, GoVersion: runtime.Version(), Platform: runtime.GOOS, Arch: runtime.GOARCH}
-		if *machine {
-			return printJSON(info)
-		}
-		line := "suitectl " + info.Version
-		if info.Commit != "" {
-			line += " (" + info.Commit + ")"
-		}
-		fmt.Println(line, info.GoVersion, info.Platform+"/"+info.Arch)
-		return 0
-	case "doctor":
-		fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		machine := fs.Bool("json", false, "Print machine-readable diagnostics")
-		verbose := fs.Bool("verbose", false, "Show diagnostic details")
-		if err := fs.Parse(args[1:]); err != nil {
-			return 2
-		}
-		if fs.NArg() != 0 {
-			return usageError("doctor: unexpected arguments")
-		}
-		report := diagnostics.Detect()
-		if *machine {
-			return printJSON(report)
-		}
-		fmt.Printf("Sovereign %s | %s/%s\n", version, report.Platform, report.Architecture)
-		names := make([]string, 0, len(report.Providers))
-		for name := range report.Providers {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			status := "not found"
-			if report.Providers[name] {
-				status = "available"
-			}
-			fmt.Printf("  %-10s %s\n", name, status)
-		}
-		if *verbose {
-			fmt.Println("Multisuite: optional; no connection attempted")
-		}
-		return 0
-	case "catalog", "profiles":
-		if len(args) < 2 || args[1] != "list" {
-			return usageError(args[0] + ": expected list subcommand")
-		}
-		fs := flag.NewFlagSet(args[0]+" list", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
-		platform := fs.String("platform", "", "Filter applications by platform")
-		machine := fs.Bool("json", false, "JSON output")
-		if err := fs.Parse(args[2:]); err != nil {
-			return 2
-		}
-		if fs.NArg() != 0 {
-			return usageError("unexpected positional arguments")
-		}
-		if *platform != "" && *platform != "windows" && *platform != "linux" && *platform != "android" {
-			return usageError("unsupported platform")
-		}
-		c, err := loadCatalog(*root)
-		if err != nil {
-			return loadError(err)
-		}
-		if args[0] == "catalog" {
-			type entry struct {
-				ID     string `json:"id"`
-				Name   string `json:"name"`
-				Status string `json:"status,omitempty"`
-			}
-			list := []entry{}
-			for _, id := range c.AppIDs() {
-				app := c.Apps[id]
-				status := ""
-				if *platform != "" {
-					p, exists := app.Platforms[*platform]
-					if !exists {
-						continue
-					}
-					status = p.Status
-				}
-				list = append(list, entry{ID: id, Name: app.Name, Status: status})
-			}
-			if *machine {
-				return printJSON(list)
-			}
-			for _, e := range list {
-				fmt.Printf("%s\t%s\t%s\n", e.ID, e.Name, e.Status)
-			}
-		} else {
+		list := []entry{}
+		for _, id := range c.AppIDs() {
+			app := c.Apps[id]
+			status := ""
 			if *platform != "" {
-				return usageError("--platform applies only to catalog list")
-			}
-			if *machine {
-				profiles := []catalog.Profile{}
-				for _, id := range c.ProfileIDs() {
-					profiles = append(profiles, c.Profiles[id])
+				p, exists := app.Platforms[*platform]
+				if !exists {
+					continue
 				}
-				return printJSON(profiles)
+				status = p.Status
 			}
+			list = append(list, entry{ID: id, Name: app.Name, Status: status})
+		}
+		if *machine {
+			return printJSON(list)
+		}
+		for _, e := range list {
+			fmt.Printf("%s\t%s\t%s\n", e.ID, e.Name, e.Status)
+		}
+	} else {
+		if *platform != "" {
+			return usageError("--platform applies only to catalog list")
+		}
+		if *machine {
+			profiles := []catalog.Profile{}
 			for _, id := range c.ProfileIDs() {
-				fmt.Printf("%s\t%s\n", id, c.Profiles[id].Name)
+				profiles = append(profiles, c.Profiles[id])
 			}
+			return printJSON(profiles)
 		}
-		return 0
-	case "status":
-		fs := flag.NewFlagSet("status", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
-		profile := fs.String("profile", "essential", "Profile to compare against this device")
-		machine := fs.Bool("json", false, "Machine-readable status (schema_version 1)")
-		verbose := fs.Bool("verbose", false, "Show journal, history and per-application details")
-		if err := fs.Parse(args[1:]); err != nil {
-			return 2
+		for _, id := range c.ProfileIDs() {
+			fmt.Printf("%s\t%s\n", id, c.Profiles[id].Name)
 		}
-		if fs.NArg() != 0 {
-			return usageError("status takes no positional arguments")
-		}
-		c, err := loadCatalog(*root)
+	}
+	return 0
+}
+
+func cmdStatus(args []string) int {
+	fs := flag.NewFlagSet("status", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
+	profile := fs.String("profile", "essential", "Profile to compare against this device")
+	machine := fs.Bool("json", false, "Machine-readable status (schema_version 1)")
+	verbose := fs.Bool("verbose", false, "Show journal, history and per-application details")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		return usageError("status takes no positional arguments")
+	}
+	c, err := loadCatalog(*root)
+	if err != nil {
+		return loadError(err)
+	}
+	report, err := buildStatus(c, *profile, newEngine(false))
+	if err != nil {
+		return loadError(err)
+	}
+	if *machine {
+		return printJSON(report)
+	}
+	printStatus(report, *verbose)
+	return 0
+}
+
+func cmdPlan(args []string) int {
+	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
+	profile := fs.String("profile", "", "Required profile ID")
+	platform := fs.String("platform", runtime.GOOS, "Target platform (windows, linux, android)")
+	machine := fs.Bool("json", false, "Versioned JSON plan")
+	noInspect := fs.Bool("no-inspect", false, "Skip local package inspection and preserve deterministic H1 output")
+	verbose := fs.Bool("verbose", false, "Show all operations and package metadata")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 || *profile == "" {
+		return usageError("plan requires --profile and no positional arguments")
+	}
+	c, err := loadCatalog(*root)
+	if err != nil {
+		return loadError(err)
+	}
+	available := map[string]bool{}
+	if *platform == runtime.GOOS {
+		available = detectProviders()
+	}
+	plan, err := planner.Build(c, *profile, planner.Device{Platform: *platform, Providers: available})
+	if err != nil {
+		return loadError(err)
+	}
+	if *platform == runtime.GOOS {
+		plan = planner.LocalizeDependencies(plan, runtime.GOARCH)
+	}
+	if !*noInspect && *platform == runtime.GOOS {
+		engine := newEngine(false)
+		plan = inspectPlan(context.Background(), c, plan, engine)
+	}
+	if *machine {
+		return printJSON(plan)
+	}
+	printPlan(plan, "Plan", *verbose)
+	return 0
+}
+
+func cmdApplyOrVerify(args []string) int {
+	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
+	app := fs.String("app", "", "Single allowlisted application ID")
+	profile := fs.String("profile", "", "apply only: install every required, missing application of this profile")
+	yes := fs.Bool("yes", false, "Explicitly authorize installation")
+	machine := fs.Bool("json", false, "Machine-readable verification result")
+	nonInteractive := fs.Bool("non-interactive", false, "Never attach the package manager to the terminal; WinGet prompts are disabled")
+	verbose := fs.Bool("verbose", false, "Show individual applications and plan details")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		return usageError(args[0] + " takes no positional arguments")
+	}
+	if args[0] == "verify" && (*app == "" || *profile != "") {
+		return usageError("verify requires --app")
+	}
+	if args[0] == "apply" && (*app == "") == (*profile == "") {
+		return usageError("apply requires exactly one of --app or --profile")
+	}
+	if args[0] == "verify" && *yes {
+		return usageError("--yes applies only to apply")
+	}
+	if args[0] == "apply" && *machine {
+		return usageError("--json applies only to verify")
+	}
+	if args[0] == "verify" && *nonInteractive {
+		return usageError("--non-interactive applies only to apply")
+	}
+	c, err := loadCatalog(*root)
+	if err != nil {
+		return loadError(err)
+	}
+	engine := newEngine(!*nonInteractive && isTerminal())
+	if *profile != "" {
+		return applyProfile(c, *profile, *yes, engine, *verbose)
+	}
+	target, err := engine.Resolve(c, *app, runtime.GOOS)
+	if err != nil {
+		return loadError(err)
+	}
+	if args[0] == "verify" {
+		state, err := engine.Status(context.Background(), target)
 		if err != nil {
-			return loadError(err)
-		}
-		report, err := buildStatus(c, *profile, install.Engine{Runner: newRunner(), Platform: runtime.GOOS})
-		if err != nil {
-			return loadError(err)
-		}
-		if *machine {
-			return printJSON(report)
-		}
-		printStatus(report, *verbose)
-		return 0
-	case "plan":
-		fs := flag.NewFlagSet("plan", flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
-		profile := fs.String("profile", "", "Required profile ID")
-		platform := fs.String("platform", runtime.GOOS, "Target platform (windows, linux, android)")
-		machine := fs.Bool("json", false, "Versioned JSON plan")
-		noInspect := fs.Bool("no-inspect", false, "Skip local package inspection and preserve deterministic H1 output")
-		verbose := fs.Bool("verbose", false, "Show all operations and package metadata")
-		if err := fs.Parse(args[1:]); err != nil {
-			return 2
-		}
-		if fs.NArg() != 0 || *profile == "" {
-			return usageError("plan requires --profile and no positional arguments")
-		}
-		c, err := loadCatalog(*root)
-		if err != nil {
-			return loadError(err)
-		}
-		available := map[string]bool{}
-		if *platform == runtime.GOOS {
-			available = detectProviders()
-		}
-		plan, err := planner.Build(c, *profile, planner.Device{Platform: *platform, Providers: available})
-		if err != nil {
-			return loadError(err)
-		}
-		if *platform == runtime.GOOS {
-			plan = planner.LocalizeDependencies(plan, runtime.GOARCH)
-		}
-		if !*noInspect && *platform == runtime.GOOS {
-			engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS}
-			plan = inspectPlan(context.Background(), c, plan, engine)
-		}
-		if *machine {
-			return printJSON(plan)
-		}
-		printPlan(plan, "Plan", *verbose)
-		return 0
-	case "apply", "verify":
-		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
-		fs.SetOutput(os.Stderr)
-		root := fs.String("root", "", "Development only: read catalog/profiles from this checkout instead of the embedded copy")
-		app := fs.String("app", "", "Single allowlisted application ID")
-		profile := fs.String("profile", "", "apply only: install every required, missing application of this profile")
-		yes := fs.Bool("yes", false, "Explicitly authorize installation")
-		machine := fs.Bool("json", false, "Machine-readable verification result")
-		nonInteractive := fs.Bool("non-interactive", false, "Never attach the package manager to the terminal; WinGet prompts are disabled")
-		verbose := fs.Bool("verbose", false, "Show individual applications and plan details")
-		if err := fs.Parse(args[1:]); err != nil {
-			return 2
-		}
-		if fs.NArg() != 0 {
-			return usageError(args[0] + " takes no positional arguments")
-		}
-		if args[0] == "verify" && (*app == "" || *profile != "") {
-			return usageError("verify requires --app")
-		}
-		if args[0] == "apply" && (*app == "") == (*profile == "") {
-			return usageError("apply requires exactly one of --app or --profile")
-		}
-		if args[0] == "verify" && *yes {
-			return usageError("--yes applies only to apply")
-		}
-		if args[0] == "apply" && *machine {
-			return usageError("--json applies only to verify")
-		}
-		if args[0] == "verify" && *nonInteractive {
-			return usageError("--non-interactive applies only to apply")
-		}
-		c, err := loadCatalog(*root)
-		if err != nil {
-			return loadError(err)
-		}
-		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
-		if *profile != "" {
-			return applyProfile(c, *profile, *yes, engine, *verbose)
-		}
-		target, err := engine.Resolve(c, *app, runtime.GOOS)
-		if err != nil {
-			return loadError(err)
-		}
-		if args[0] == "verify" {
-			state, err := engine.Status(context.Background(), target)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Verification failed:", err)
-				printProviderHint(err, target.Provider)
-				return 1
-			}
-			result := install.Result{SchemaVersion: 1, Application: target.AppID, Platform: runtime.GOOS, Provider: target.Provider, State: state, Detail: "Local package-manager inspection"}
-			if *machine {
-				if rc := printJSON(result); rc != 0 {
-					return rc
-				}
-			} else {
-				fmt.Printf("%s: %s\n", target.AppID, state)
-			}
-			if state != install.Installed {
-				return 1
-			}
-			return 0
-		}
-		var release func()
-		if *yes {
-			store, err := newStore()
-			if err == nil {
-				release, err = store.Lock()
-			}
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Not installed:", err)
-				return 1
-			}
-			defer release()
-		}
-		result, err := engine.Apply(context.Background(), target, *yes)
-		switch {
-		case err == nil && result.Changed:
-			recordJournal([]state.Entry{journalEntry(target, state.ResultInstalled, true, "")})
-		case err == nil:
-			recordJournal([]state.Entry{journalEntry(target, state.ResultAlreadyInstalled, false, "")})
-		case !errors.Is(err, install.ErrConsentRequired):
-			recordJournal([]state.Entry{journalEntry(target, state.ResultFailed, result.Changed, install.ErrorClass(err))})
-		}
-		if errors.Is(err, install.ErrConsentRequired) {
-			fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
-			if target.NeedsAdminApproval() {
-				fmt.Fprintln(os.Stderr, "Note: this package installs for all users; Windows will ask for administrator approval.")
-			}
-			if target.Provenance == "community" {
-				fmt.Fprintln(os.Stderr, "Note: community-built package, not endorsed by the upstream project.")
-			}
-			if len(target.ProviderDependencies) > 0 {
-				deps := planner.DependenciesForArch(target.ProviderDependencies, runtime.GOARCH)
-				fmt.Fprintln(os.Stderr, "Note: "+planner.DependencyNotice(target.Provider, deps)+".")
-			}
-			return 3
-		}
-		if errors.Is(err, install.ErrFlathubRemoteMissing) {
-			fmt.Fprintln(os.Stderr, "Sovereign does not add package repositories. Add the official Flathub user remote yourself, then retry:")
-			fmt.Fprintln(os.Stderr, "  "+install.FlathubRemoteCommand)
-			return 1
-		}
-		if errors.Is(err, install.ErrAdminApprovalNeedsTerminal) {
-			fmt.Fprintln(os.Stderr, "Not installed:", err)
-			return 1
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Installation/verification failed:", err)
+			fmt.Fprintln(os.Stderr, "Verification failed:", err)
 			printProviderHint(err, target.Provider)
 			return 1
 		}
-		fmt.Printf("%s: %s (%s)\n", result.Application, result.State, result.Detail)
-		return 0
-	default:
-		return usageError("unknown command: " + args[0])
-	}
-}
-
-// loadCatalog uses the catalog compiled into the binary unless a development
-// checkout is given explicitly with --root.
-// notAvailableHere reports a setup application that Sovereign cannot install on
-// this platform yet (not verified or unsupported). It is skipped, not an error.
-func notAvailableHere(op planner.Operation) bool {
-	return op.Status == "pending_verification" || op.Status == "unsupported"
-}
-
-// printPlan prints plan entries with their notices and next steps.
-func printPlan(plan planner.Plan, title string, verbose bool) {
-	installed := 0
-	pending := 0
-	other := 0
-	unavailable := 0
-	for _, op := range plan.Operations {
-		if op.Status == "installed" {
-			installed++
-		} else if notAvailableHere(op) {
-			unavailable++
-		} else if op.Required && (op.Status == "not_installed" || op.Status == "inspection_required") {
-			pending++
-		} else if op.Required {
-			other++
-		}
-	}
-	summary := fmt.Sprintf("%s %s (%s): %d installed, %d to review", title, plan.Profile, plan.Platform, installed, pending+other)
-	if unavailable > 0 {
-		summary += fmt.Sprintf(", %d not yet available on this platform", unavailable)
-	}
-	fmt.Println(summary)
-	for _, op := range plan.Operations {
-		if !verbose && op.Status == "installed" {
-			continue
-		}
-		// Nothing for the user to do: say it once, without the internal reason.
-		if !verbose && notAvailableHere(op) {
-			fmt.Printf("  %-16s not yet available on %s (skipped)\n", op.Application, plan.Platform)
-			continue
-		}
-		fmt.Printf("  %-16s %s\n", op.Application, op.Status)
-		if !verbose && op.Status != "not_installed" && op.Status != "inspection_failed" &&
-			op.Status != "provider_unavailable" && op.Status != "pending_verification" && op.Status != "unsupported" {
-			continue
-		}
-		if op.Reason != "" {
-			fmt.Printf("    %s\n", op.Reason)
-		}
-		// Approval/UAC notices only matter when an actual installation is required.
-		if op.Status == "not_installed" || (verbose && op.Status != "installed") {
-			for _, notice := range op.Notices() {
-				fmt.Printf("    ! %s\n", notice)
+		result := install.Result{SchemaVersion: 1, Application: target.AppID, Platform: runtime.GOOS, Provider: target.Provider, State: state, Detail: "Local package-manager inspection"}
+		if *machine {
+			if rc := printJSON(result); rc != 0 {
+				return rc
 			}
+		} else {
+			fmt.Printf("%s: %s\n", target.AppID, state)
 		}
-		if op.NextStep != "" {
-			fmt.Printf("    Next: %s\n", op.NextStep)
+		if state != install.Installed {
+			return 1
 		}
+		return 0
 	}
+	var release func()
+	if *yes {
+		store, err := newStore()
+		if err == nil {
+			release, err = store.Lock()
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Not installed:", err)
+			return 1
+		}
+		defer release()
+	}
+	result, err := engine.Apply(context.Background(), target, *yes)
+	switch {
+	case err == nil && result.Changed:
+		recordJournal([]state.Entry{journalEntry(target, state.ResultInstalled, true, "")})
+	case err == nil:
+		recordJournal([]state.Entry{journalEntry(target, state.ResultAlreadyInstalled, false, "")})
+	case !errors.Is(err, install.ErrConsentRequired):
+		recordJournal([]state.Entry{journalEntry(target, state.ResultFailed, result.Changed, install.ErrorClass(err))})
+	}
+	if errors.Is(err, install.ErrConsentRequired) {
+		fmt.Fprintf(os.Stderr, "Refusing to install %s via %s (%s). Review the plan and pass --yes to authorize this installation.\n", target.AppID, target.Provider, target.PackageID)
+		if target.NeedsAdminApproval() {
+			fmt.Fprintln(os.Stderr, "Note: this package installs for all users; Windows will ask for administrator approval.")
+		}
+		if target.Provenance == "community" {
+			fmt.Fprintln(os.Stderr, "Note: community-built package, not endorsed by the upstream project.")
+		}
+		if len(target.ProviderDependencies) > 0 {
+			deps := planner.DependenciesForArch(target.ProviderDependencies, runtime.GOARCH)
+			fmt.Fprintln(os.Stderr, "Note: "+planner.DependencyNotice(target.Provider, deps)+".")
+		}
+		return 3
+	}
+	if errors.Is(err, install.ErrFlathubRemoteMissing) {
+		fmt.Fprintln(os.Stderr, "Sovereign does not add package repositories. Add the official Flathub user remote yourself, then retry:")
+		fmt.Fprintln(os.Stderr, "  "+install.FlathubRemoteCommand)
+		return 1
+	}
+	if errors.Is(err, install.ErrAdminApprovalNeedsTerminal) {
+		fmt.Fprintln(os.Stderr, "Not installed:", err)
+		return 1
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Installation/verification failed:", err)
+		printProviderHint(err, target.Provider)
+		return 1
+	}
+	fmt.Printf("%s: %s (%s)\n", result.Application, result.State, result.Detail)
+	return 0
 }
 
 func loadCatalog(root string) (catalog.Catalog, error) {
@@ -446,24 +423,6 @@ func loadCatalog(root string) (catalog.Catalog, error) {
 		return catalog.LoadFS(sovereign.Files)
 	}
 	return catalog.Load(root)
-}
-
-func printProviderHint(err error, provider string) {
-	if errors.Is(err, exec.ErrNotFound) {
-		if hint := planner.ProviderSetupHint(provider); hint != "" {
-			fmt.Fprintln(os.Stderr, "Next step:", hint)
-		}
-	}
-}
-
-func printJSON(value any) int {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(value); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	return 0
 }
 
 func usageError(message string) int {

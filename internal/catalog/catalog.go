@@ -31,8 +31,8 @@ type Platform struct {
 	PackageID  string `yaml:"package_id,omitempty" json:"package_id,omitempty"`
 	VerifiedAt string `yaml:"verified_at,omitempty" json:"verified_at,omitempty"`
 	Source     string `yaml:"source,omitempty" json:"source,omitempty"`
-	// Scope is where the package installs: "user" or "machine" (Windows only;
-	// machine scope means the OS asks for administrator approval).
+	// Scope is where the package installs: ScopeUser, ScopeMachine or
+	// ScopeUnspecified (see ScopeMayElevate and ScopeNotice).
 	Scope string `yaml:"scope,omitempty" json:"scope,omitempty"`
 	// Provenance records who produced the installed artifact: "upstream" when the
 	// channel installs binaries published by the upstream project, "community"
@@ -45,7 +45,38 @@ type Platform struct {
 	Notes                string   `yaml:"notes,omitempty" json:"notes,omitempty"`
 }
 
-var scopes = []string{"user", "machine"}
+// Install scopes (ADR-0006). This file is the single owner of what each scope
+// means; installer, planner and validation ask these helpers.
+const (
+	// ScopeUser installs for the current user only, without elevation.
+	ScopeUser = "user"
+	// ScopeMachine installs for all users: Windows asks for administrator approval.
+	ScopeMachine = "machine"
+	// ScopeUnspecified records a WinGet manifest that declares no scope: the
+	// provider chooses the installer, which may ask for administrator approval.
+	ScopeUnspecified = "unspecified"
+)
+
+var scopes = []string{ScopeUser, ScopeMachine, ScopeUnspecified}
+
+// ScopeMayElevate reports whether installing with this scope can raise an OS
+// administrator prompt. Such scopes rely on Windows elevation, so they are
+// valid only on Windows and must run from an attended terminal.
+func ScopeMayElevate(scope string) bool {
+	return scope == ScopeMachine || scope == ScopeUnspecified
+}
+
+// ScopeNotice is the warning shown before consent, or "" when there is none.
+func ScopeNotice(scope string) string {
+	switch scope {
+	case ScopeMachine:
+		return "installs for all users: Windows will ask for administrator approval"
+	case ScopeUnspecified:
+		return "the package does not declare its install scope: Windows may ask for administrator approval"
+	}
+	return ""
+}
+
 var provenances = []string{"upstream", "community"}
 
 type Application struct {
@@ -243,10 +274,10 @@ func validateApp(a Application, filename string) error {
 				return fmt.Errorf("%s: verified platform requires package ID, trusted HTTPS source and date", a.ID)
 			}
 			if !slices.Contains(scopes, entry.Scope) || !slices.Contains(provenances, entry.Provenance) {
-				return fmt.Errorf("%s: verified platform requires scope (user|machine) and provenance (upstream|community)", a.ID)
+				return fmt.Errorf("%s: verified platform requires scope (user|machine|unspecified) and provenance (upstream|community)", a.ID)
 			}
-			if entry.Scope == "machine" && platform != "windows" {
-				return fmt.Errorf("%s: machine scope is only supported on windows", a.ID)
+			if ScopeMayElevate(entry.Scope) && platform != "windows" {
+				return fmt.Errorf("%s: %s scope is only supported on windows", a.ID, entry.Scope)
 			}
 			date, err := time.Parse("2006-01-02", entry.VerifiedAt)
 			if err != nil || date.After(time.Now().UTC().Add(24*time.Hour)) {
