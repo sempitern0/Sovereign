@@ -105,7 +105,7 @@ func (w *wizard) apps() {
 	for _, dep := range target.ProviderDependencies {
 		fmt.Fprintf(w.output, "Dependencia declarada: %s\n", dep)
 	}
-	state, err := (install.Engine{Runner: newRunner(), Platform: runtime.GOOS}).Status(context.Background(), target)
+	state, err := newEngine(false).Status(context.Background(), target)
 	if err != nil {
 		fmt.Fprintf(w.output, "No se pudo verificar el paquete: %v\n", err)
 		return

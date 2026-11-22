@@ -93,6 +93,9 @@ type Engine struct {
 	Interactive    bool
 	InspectTimeout time.Duration
 	InstallTimeout time.Duration
+	// Cache, when set, reuses read-only provider output within one command.
+	// Nil disables caching (every inspection calls the provider).
+	Cache *Cache
 }
 
 type Target struct {
@@ -192,7 +195,9 @@ func (e Engine) Status(ctx context.Context, t Target) (State, error) {
 	defer cancel()
 	switch t.Provider {
 	case "flatpak":
-		out, err := e.Runner.Run(ctx, "flatpak", "list", "--app", "--columns=application")
+		out, err := e.Cache.flatpakList(ctx, func(ctx context.Context) (string, error) {
+			return e.Runner.Run(ctx, "flatpak", "list", "--app", "--columns=application")
+		})
 		if err != nil {
 			return "", fmt.Errorf("cannot list Flatpak applications: %w", err)
 		}
@@ -249,7 +254,7 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 	var args []string
 	switch t.Provider {
 	case "flatpak":
-		if err := e.requireFlathub(ctx); err != nil {
+		if err := e.Cache.flathub(ctx, e.requireFlathub); err != nil {
 			return result, err
 		}
 		program, args = "flatpak", []string{"install", "--user", "--noninteractive", "flathub", t.PackageID}
@@ -264,7 +269,11 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 	if t.NeedsAdminApproval() && !e.attended() {
 		return result, ErrAdminApprovalNeedsTerminal
 	}
-	if err := e.install(ctx, program, args); err != nil {
+	err = e.install(ctx, program, args)
+	// The host may have changed even if the command failed: never reuse
+	// pre-install state for the verification below or for later applications.
+	e.Cache.invalidate()
+	if err != nil {
 		return result, fmt.Errorf("%s %w: %w", providerName(t.Provider), ErrInstallFailed, err)
 	}
 	result.Changed = true

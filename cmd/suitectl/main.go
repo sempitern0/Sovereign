@@ -74,7 +74,7 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
-		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
+		engine := newEngine(!*nonInteractive && isTerminal())
 		return applyProfile(c, "essential", *yes, engine, *verbose)
 	case "privacy":
 		return runPrivacy(args[1:])
@@ -215,7 +215,7 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
-		report, err := buildStatus(c, *profile, install.Engine{Runner: newRunner(), Platform: runtime.GOOS})
+		report, err := buildStatus(c, *profile, newEngine(false))
 		if err != nil {
 			return loadError(err)
 		}
@@ -255,7 +255,7 @@ func run(args []string) int {
 			plan = planner.LocalizeDependencies(plan, runtime.GOARCH)
 		}
 		if !*noInspect && *platform == runtime.GOOS {
-			engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS}
+			engine := newEngine(false)
 			plan = inspectPlan(context.Background(), c, plan, engine)
 		}
 		if *machine {
@@ -298,7 +298,7 @@ func run(args []string) int {
 		if err != nil {
 			return loadError(err)
 		}
-		engine := install.Engine{Runner: newRunner(), Platform: runtime.GOOS, Interactive: !*nonInteractive && isTerminal()}
+		engine := newEngine(!*nonInteractive && isTerminal())
 		if *profile != "" {
 			return applyProfile(c, *profile, *yes, engine, *verbose)
 		}

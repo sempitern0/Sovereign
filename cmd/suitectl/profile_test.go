@@ -298,3 +298,35 @@ func TestApplyProfileSkipsAppsNotVerifiedOnThisPlatform(t *testing.T) {
 		}
 	}
 }
+
+// Guards the number of package-manager calls of `setup --yes` on Linux: one
+// inspection list, one remotes check, then one install and one verification
+// list per application (previously one list per inspection and two per install).
+func TestApplyProfileFlatpakCallBudget(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Flatpak call budget applies to Linux")
+	}
+	host := &fakeHost{installed: map[string]bool{}}
+	runner := &scriptedRunner{respond: host.respond}
+	withProcess(t, runner, false)
+	withStateDir(t)
+	if code := run([]string{"apply", "--profile", "essential", "--yes"}); code != 0 {
+		t.Fatalf("code=%d", code)
+	}
+	ls, vlc, lo := packageIDs()
+	_, extra := extraProfilePackages(t)
+	apps := 3 + len(extra)
+	count := func(first string) int {
+		n := 0
+		for _, call := range append(runner.calls, runner.interactive...) {
+			if call[0] == "flatpak" && call[1] == first {
+				n++
+			}
+		}
+		return n
+	}
+	if count("install") != apps || count("list") != 1+apps || count("remotes") != 1 {
+		t.Fatalf("installs=%d lists=%d remotes=%d for %d apps (%s %s %s): %v",
+			count("install"), count("list"), count("remotes"), apps, ls, vlc, lo, runner.calls)
+	}
+}
