@@ -36,6 +36,9 @@ func Sync(home, dataHome, appID string) (int, error) {
 	if !validLauncher(content, appID) {
 		return 0, fmt.Errorf("Flatpak launcher for %s has unexpected metadata; refusing to copy", appID)
 	}
+	// If the session does not include Flatpak exports in XDG_DATA_DIRS,
+	// its icon theme may also be invisible. Prefer a real exported icon path.
+	content = visibleIcon(content, exported)
 	name := appID + ".desktop"
 	changed := 0
 	menu := filepath.Join(dataHome, "applications", name)
@@ -103,6 +106,40 @@ func validLauncher(data []byte, id string) bool {
 		return false
 	}
 	return strings.Contains(s, "\nExec=") && strings.Contains(s, "\nName=")
+}
+
+// visibleIcon preserves the exported icon, but uses an absolute reference when
+// its theme directory is not available through XDG_DATA_DIRS. Never execute
+// metadata or search outside the Flatpak export tree.
+func visibleIcon(entry []byte, exported string) []byte {
+	lines := strings.Split(string(entry), "\n")
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "Icon=") {
+			continue
+		}
+		icon := strings.TrimPrefix(line, "Icon=")
+		if icon == "" || strings.ContainsAny(icon, "/\\") {
+			return entry
+		}
+		for _, r := range icon {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+				(r >= '0' && r <= '9') || r == '.' || r == '_' || r == '-') {
+				return entry
+			}
+		}
+		share := filepath.Dir(filepath.Dir(exported))
+		for _, size := range []string{"scalable", "256x256", "128x128", "64x64", "48x48"} {
+			for _, ext := range []string{".svg", ".png"} {
+				path := filepath.Join(share, "icons", "hicolor", size, "apps", icon+ext)
+				if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+					lines[i] = "Icon=" + path
+					return []byte(strings.Join(lines, "\n"))
+				}
+			}
+		}
+		return entry
+	}
+	return entry
 }
 
 func writeManaged(path string, original []byte, menu bool) (bool, error) {
