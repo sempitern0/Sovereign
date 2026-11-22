@@ -128,17 +128,29 @@ func TestFlatpakManagedExportSymlink(t *testing.T) {
 	h, data, id := fixture(t)
 	exported := filepath.Join(data, "flatpak", "exports", "share", "applications", id+".desktop")
 	targetDir := filepath.Join(data, "flatpak", "app", id, "x86_64", "stable", "active", "export", "share", "applications")
-	if err := os.MkdirAll(targetDir, 0o700); err != nil { t.Fatal(err) }
-	target := filepath.Join(targetDir, id+".desktop")
-	b, err := os.ReadFile(exported)
-	if err != nil { t.Fatal(err) }
-	if err := os.WriteFile(target, b, 0o600); err != nil { t.Fatal(err) }
-	if err := os.Remove(exported); err != nil { t.Fatal(err) }
-	if err := os.Symlink(target, exported); err != nil {
-		if runtime.GOOS=="windows" { t.Skip("Windows symlink creation may require privileges") }
+	if err := os.MkdirAll(targetDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if n, err := Sync(h, data, id); err != nil || n != 2 { t.Fatalf("symlink export n=%d err=%v", n,err) }
+	target := filepath.Join(targetDir, id+".desktop")
+	b, err := os.ReadFile(exported)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(exported); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, exported); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows symlink creation may require privileges")
+		}
+		t.Fatal(err)
+	}
+	if n, err := Sync(h, data, id); err != nil || n != 2 {
+		t.Fatalf("symlink export n=%d err=%v", n, err)
+	}
 }
 
 func TestRejectExportSymlinkOutsideFlatpakApp(t *testing.T) {
@@ -146,11 +158,19 @@ func TestRejectExportSymlinkOutsideFlatpakApp(t *testing.T) {
 	exported := filepath.Join(data, "flatpak", "exports", "share", "applications", id+".desktop")
 	target := filepath.Join(h, "untrusted.desktop")
 	b, _ := os.ReadFile(exported)
-	if err := os.WriteFile(target, b, 0o600); err != nil { t.Fatal(err) }
-	if err := os.Remove(exported); err != nil { t.Fatal(err) }
-	if err := os.Symlink(target, exported); err != nil {
-		if runtime.GOOS=="windows" { t.Skip("Windows symlink creation may require privileges") }
+	if err := os.WriteFile(target, b, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _,err := Sync(h, data, id); err == nil {t.Fatal("untrusted export symlink accepted")}
+	if err := os.Remove(exported); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, exported); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows symlink creation may require privileges")
+		}
+		t.Fatal(err)
+	}
+	if _, err := Sync(h, data, id); err == nil {
+		t.Fatal("untrusted export symlink accepted")
+	}
 }
