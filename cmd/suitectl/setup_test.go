@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
-	"testing"
 	"context"
 	"runtime"
+	"strings"
+	"testing"
 
 	"github.com/sempitern0/Sovereign/internal/install"
 )
@@ -65,26 +65,28 @@ func TestSetupMissingLinuxProviderIsPreparedOnlyWithConsent(t *testing.T) {
 	beforeProviders := detectProviders
 	beforePrepare := prepareFlatpak
 	withStateDir(t)
-	defer func(){ detectProviders = beforeProviders; prepareFlatpak = beforePrepare }()
+	defer func() { detectProviders = beforeProviders; prepareFlatpak = beforePrepare }()
 	providerPresent := false
 	detectProviders = func() map[string]bool { return map[string]bool{"flatpak": providerPresent} }
 	prepareCalls := 0
-	prepareFlatpak = func(ctx context.Context, runner install.Runner, interactive, consent bool)(bool,error){
+	prepareFlatpak = func(ctx context.Context, runner install.Runner, interactive, consent bool) (bool, error) {
 		prepareCalls++
-		if !consent { t.Fatal("missing consent") }
-		providerPresent=true
-		return true,nil
+		if !consent {
+			t.Fatal("missing consent")
+		}
+		providerPresent = true
+		return true, nil
 	}
 	host := &fakeHost{installed: allInstalled(t)}
 	runner := &scriptedRunner{respond: host.respond}
 	withProcess(t, runner, false)
-	if code:=run([]string{"setup"});code!=3 || prepareCalls!=0 {
-		t.Fatalf("without consent: code=%d preparer=%d",code,prepareCalls)
+	if code := run([]string{"setup"}); code != 3 || prepareCalls != 0 {
+		t.Fatalf("without consent: code=%d preparer=%d", code, prepareCalls)
 	}
-	if code:=run([]string{"setup","--yes"});code!=0 || prepareCalls!=1 {
-		t.Fatalf("with consent: code=%d preparer=%d",code,prepareCalls)
+	if code := run([]string{"setup", "--yes"}); code != 0 || prepareCalls != 1 {
+		t.Fatalf("with consent: code=%d preparer=%d", code, prepareCalls)
 	}
-	if code:=run([]string{"setup","--yes"});code!=0 || prepareCalls!=1 {
-		t.Fatalf("second call: code=%d preparer=%d",code,prepareCalls)
+	if code := run([]string{"setup", "--yes"}); code != 0 || prepareCalls != 1 {
+		t.Fatalf("second call: code=%d preparer=%d", code, prepareCalls)
 	}
 }

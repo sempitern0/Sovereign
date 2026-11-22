@@ -466,12 +466,12 @@ func TestFlatpakAddsMissingOfficialUserRemoteOnlyWithConsent(t *testing.T) {
 	}
 	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{
-		"", // initial list: package absent
-		"", // user remotes: none configured
-		"", // remote-add (user scope, official URL)
+		"",                                     // initial list: package absent
+		"",                                     // user remotes: none configured
+		"",                                     // remote-add (user scope, official URL)
 		"flathub https://dl.flathub.org/repo/", // verification
-		"", // app install
-		"org.localsend.localsend_app\n", // installed
+		"",                                     // app install
+		"org.localsend.localsend_app\n",        // installed
 	}}
 	result, err := (Engine{Runner: f, Platform: "linux"}).Apply(context.Background(), target, true)
 	if err != nil || result.State != Installed || !result.Changed {
