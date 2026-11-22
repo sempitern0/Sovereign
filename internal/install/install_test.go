@@ -290,13 +290,14 @@ func TestAllowlistGatesInstallationIndependentlyOfCatalog(t *testing.T) {
 
 func TestParseAllowlistRejectsInvalidEntries(t *testing.T) {
 	for name, body := range map[string]string{
-		"unknown field":     "schema_version: 1\nentries: []\nextra: 1\n",
-		"bad version":       "schema_version: 2\nentries: []\n",
-		"provider mismatch": "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: winget, package_id: a.b, source: https://a/, scope: user, provenance: upstream}\n",
-		"flatpak machine":   "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/, scope: machine, provenance: upstream}\n",
-		"bad provenance":    "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: windows, provider: winget, package_id: a.b, source: https://a/, scope: user, provenance: unknown}\n",
-		"empty field":       "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: '', source: https://a/}\n",
-		"duplicate":         "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/}\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/}\n",
+		"unknown field":       "schema_version: 1\nentries: []\nextra: 1\n",
+		"bad version":         "schema_version: 2\nentries: []\n",
+		"provider mismatch":   "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: winget, package_id: a.b, source: https://a/, scope: user, provenance: upstream}\n",
+		"flatpak unspecified": "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/, scope: unspecified, provenance: upstream}\n",
+		"flatpak machine":     "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/, scope: machine, provenance: upstream}\n",
+		"bad provenance":      "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: windows, provider: winget, package_id: a.b, source: https://a/, scope: user, provenance: unknown}\n",
+		"empty field":         "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: '', source: https://a/}\n",
+		"duplicate":           "schema_version: 1\nentries:\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/}\n  - {application: a, upstream: https://a/, platform: linux, provider: flatpak, package_id: a.b, source: https://a/}\n",
 	} {
 		if _, err := ParseAllowlist([]byte(body)); err == nil {
 			t.Errorf("%s accepted", name)
@@ -363,6 +364,42 @@ func TestMachineScopeInstallsWithMachineScopeWhenAttended(t *testing.T) {
 		t.Fatalf("result %+v err %v", result, err)
 	}
 	want := []string{"install", "--id", "VideoLAN.VLC", "--exact", "--source", "winget", "--no-upgrade", "--scope", "machine"}
+	if len(f.interactive) != 1 || !reflect.DeepEqual(f.interactive[0].args, want) {
+		t.Fatalf("unexpected install: %+v", f.interactive)
+	}
+}
+
+func comapsWindowsTarget(t *testing.T) Target {
+	t.Helper()
+	c, err := catalog.LoadFS(sovereign.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := (Engine{}).Resolve(c, "comaps", "windows")
+	if err != nil || target.Scope != "unspecified" || !target.NeedsAdminApproval() {
+		t.Fatalf("target %+v err %v", target, err)
+	}
+	return target
+}
+
+func TestUnspecifiedScopeRequiresAttendedTerminal(t *testing.T) {
+	f := &fakeRunner{output: []string{"No installed package found matching input criteria."}}
+	_, err := (Engine{Runner: f, Platform: "windows"}).Apply(context.Background(), comapsWindowsTarget(t), true)
+	if !errors.Is(err, ErrAdminApprovalNeedsTerminal) || len(f.calls) != 1 {
+		t.Fatalf("err %v calls %+v", err, f.calls)
+	}
+}
+
+func TestUnspecifiedScopePassesNoScopeFlag(t *testing.T) {
+	f := &interactiveRunner{fakeRunner: fakeRunner{output: []string{
+		"No installed package found matching input criteria.",
+		"CoMaps CoMaps.CoMaps 2026.06.13 winget",
+	}}}
+	result, err := (Engine{Runner: f, Platform: "windows", Interactive: true}).Apply(context.Background(), comapsWindowsTarget(t), true)
+	if err != nil || !result.Changed {
+		t.Fatalf("result %+v err %v", result, err)
+	}
+	want := []string{"install", "--id", "CoMaps.CoMaps", "--exact", "--source", "winget", "--no-upgrade"}
 	if len(f.interactive) != 1 || !reflect.DeepEqual(f.interactive[0].args, want) {
 		t.Fatalf("unexpected install: %+v", f.interactive)
 	}

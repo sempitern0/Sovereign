@@ -45,7 +45,7 @@ type Platform struct {
 	Notes                string   `yaml:"notes,omitempty" json:"notes,omitempty"`
 }
 
-var scopes = []string{"user", "machine"}
+var scopes = []string{"user", "machine", "unspecified"}
 var provenances = []string{"upstream", "community"}
 
 type Application struct {
@@ -243,10 +243,10 @@ func validateApp(a Application, filename string) error {
 				return fmt.Errorf("%s: verified platform requires package ID, trusted HTTPS source and date", a.ID)
 			}
 			if !slices.Contains(scopes, entry.Scope) || !slices.Contains(provenances, entry.Provenance) {
-				return fmt.Errorf("%s: verified platform requires scope (user|machine) and provenance (upstream|community)", a.ID)
+				return fmt.Errorf("%s: verified platform requires scope (user|machine|unspecified) and provenance (upstream|community)", a.ID)
 			}
-			if entry.Scope == "machine" && platform != "windows" {
-				return fmt.Errorf("%s: machine scope is only supported on windows", a.ID)
+			if entry.Scope != "user" && platform != "windows" {
+				return fmt.Errorf("%s: %s scope is only supported on windows", a.ID, entry.Scope)
 			}
 			date, err := time.Parse("2006-01-02", entry.VerifiedAt)
 			if err != nil || date.After(time.Now().UTC().Add(24*time.Hour)) {

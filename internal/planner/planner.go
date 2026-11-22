@@ -157,8 +157,11 @@ func Build(c catalog.Catalog, profileID string, device Device) (Plan, error) {
 // Notices returns short warnings a user must see before authorizing an install.
 func (op Operation) Notices() []string {
 	var notices []string
-	if op.Scope == "machine" {
+	switch op.Scope {
+	case "machine":
 		notices = append(notices, "installs for all users: Windows will ask for administrator approval")
+	case "unspecified":
+		notices = append(notices, "the package does not declare its install scope: Windows may ask for administrator approval")
 	}
 	if op.Provenance == "community" {
 		notices = append(notices, "community-built package, not endorsed by the upstream project")

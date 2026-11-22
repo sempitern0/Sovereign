@@ -23,13 +23,15 @@ platforms:
       administrator prompt. No package dependencies. Kiwix Desktop is not published on
       WinGet; Kiwix JS is Kiwix's own reader and downloads ZIM archives in the app.
   linux:
-    status: pending
+    status: verified
     provider: flatpak
+    package_id: org.kiwix.desktop
+    source: https://github.com/flathub/org.kiwix.desktop/blob/master/org.kiwix.desktop.json
+    verified_at: "2026-11-22"
+    scope: user
+    provenance: upstream
     notes: >-
-      Flathub org.kiwix.desktop 2.4.1 has not been updated since 2024-12 and uses the
-      unsupported org.kde.Platform 5.15-23.08 runtime; not allowlisted until a
-      maintained package exists (maintainer decision 2026-11-21).
-  android:
-    status: pending
-    provider: fdroid
-    notes: Instalación Android guiada futura; necesita validación del identificador y firma.
+      Flathub org.kiwix.desktop 2.4.1, maintained in github.com/flathub/org.kiwix.desktop by
+      the Kiwix bot. Risk accepted by the maintainer on 2026-11-22: no update since
+      2024-12 and the org.kde.Platform 5.15-23.08 runtime is end-of-life (no security
+      updates). Revisit when Kiwix publishes a newer Flatpak.

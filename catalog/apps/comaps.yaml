@@ -9,14 +9,21 @@ capabilities:
   - offline_maps
 platforms:
   windows:
-    status: pending
+    status: verified
     provider: winget
+    package_id: CoMaps.CoMaps
+    source: https://github.com/microsoft/winget-pkgs/blob/master/manifests/c/CoMaps/CoMaps/2026.06.13-1-0839e6d4/CoMaps.CoMaps.installer.yaml
+    verified_at: "2026-11-22"
+    scope: unspecified
+    provenance: upstream
+    provider_dependencies:
+      - Microsoft.VCRedist.2015+.x64
     notes: >-
       WinGet manifest CoMaps.CoMaps 2026.06.13-1-0839e6d4 (publisher CoMaps Community,
-      nullsoft x64 installer from cdn-us-1.comaps.app with pinned SHA-256, dependency
-      Microsoft.VCRedist.2015+.x64). Not verified yet: the manifest declares no Scope,
-      so the install scope (user or machine/UAC) must be confirmed on a real device
-      before allowlisting; the Windows build also lags the Linux release by months.
+      nullsoft x64 installer published by the project on cdn-us-1.comaps.app with pinned
+      SHA-256, dependency Microsoft.VCRedist.2015+.x64). The manifest declares no Scope:
+      Sovereign passes no --scope and warns that Windows may ask for administrator
+      approval (maintainer decision 2026-11-22). The Windows build lags the Linux one.
   linux:
     status: verified
     provider: flatpak

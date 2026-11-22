@@ -45,6 +45,7 @@ func TestRejectMalformedInputs(t *testing.T) {
 		{"unverified package", "catalog/apps/alpha.yaml", "provider: flatpak", "provider: flatpak\n    package_id: org.example.Alpha", "unverified"},
 		{"unverified scope", "catalog/apps/alpha.yaml", "provider: flatpak", "provider: flatpak\n    scope: user", "unverified"},
 		{"verified without scope", "catalog/apps/alpha.yaml", "status: pending\n    provider: flatpak", "status: verified\n    provider: flatpak\n    package_id: org.example.Alpha\n    source: https://flathub.org/apps/org.example.Alpha\n    verified_at: \"2026-11-10\"\n    provenance: upstream", "requires scope"},
+		{"unspecified scope on linux", "catalog/apps/alpha.yaml", "status: pending\n    provider: flatpak", "status: verified\n    provider: flatpak\n    package_id: org.example.Alpha\n    source: https://flathub.org/apps/org.example.Alpha\n    verified_at: \"2026-11-10\"\n    scope: unspecified\n    provenance: upstream", "only supported on windows"},
 		{"machine scope on linux", "catalog/apps/alpha.yaml", "status: pending\n    provider: flatpak", "status: verified\n    provider: flatpak\n    package_id: org.example.Alpha\n    source: https://flathub.org/apps/org.example.Alpha\n    verified_at: \"2026-11-10\"\n    scope: machine\n    provenance: upstream", "only supported on windows"},
 		{"missing app", "profiles/essential.yaml", "  - alpha", "  - missing", "missing application"},
 		{"duplicate key", "catalog/apps/alpha.yaml", "name: Alpha", "name: Alpha\nname: Duplicate", "already defined"},

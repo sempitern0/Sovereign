@@ -25,3 +25,12 @@ Status: accepted (2026-11-11), decided by the maintainer during H3-1 (VLC). Refi
 - LibreOffice is allowlisted on Windows (machine scope, upstream MSI, declared Microsoft Visual C++ Redistributable dependency) and Linux (user scope, Flathub build maintained by LibreOffice developers from the official tag, `upstream`).
 - The invariant "user scope only" becomes "user scope unless the allowlist entry declares machine scope, which requires an attended terminal and the OS's own approval".
 - Future apps must record both fields from evidence; unknown means not verified.
+
+## Amendment 2026-11-22 — unspecified scope, community by default, acceptance after merge
+
+Maintainer decision to keep the project moving without weakening consent:
+
+- `scope: unspecified` (Windows/WinGet only) records that the manifest declares no `Scope`. Sovereign passes no `--scope`, lets WinGet choose the installer and treats the package like `machine`: the plan warns that Windows *may* ask for administrator approval and `apply` requires an attended terminal. First use: CoMaps on Windows.
+- Community provenance and declared provider dependencies no longer need a per-app decision; they are always shown as notices before consent.
+- Unmaintained packages (no upstream update for over a year or an end-of-life runtime) still need an explicit maintainer decision recorded in the catalog notes. First use: Kiwix Desktop on Flathub.
+- Several applications may be allowlisted in one PR. Real-device acceptance may follow the merge; until it is recorded in STATUS the app is *pending real acceptance*, and a failure reverts it or sets the platform back to `pending`.

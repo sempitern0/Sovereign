@@ -46,7 +46,7 @@ var ErrFlathubRemoteMissing = errors.New("official user Flathub remote missing; 
 
 // ErrAdminApprovalNeedsTerminal stops a machine-scope install that would trigger
 // an administrator prompt nobody is attending.
-var ErrAdminApprovalNeedsTerminal = errors.New("this package installs for all users and Windows will ask for administrator approval; run apply from an interactive terminal")
+var ErrAdminApprovalNeedsTerminal = errors.New("Windows may ask for administrator approval for this package; run apply from an interactive terminal")
 
 // ErrNotDetectedAfterInstall means the package manager reported success but the
 // package is not visible afterwards.
@@ -105,8 +105,9 @@ type Target struct {
 	ProviderDependencies []string
 }
 
-// NeedsAdminApproval reports whether installing triggers an OS elevation prompt.
-func (t Target) NeedsAdminApproval() bool { return t.Scope == "machine" }
+// NeedsAdminApproval reports whether installing triggers, or may trigger, an OS
+// elevation prompt (machine scope, or a manifest that declares no scope).
+func (t Target) NeedsAdminApproval() bool { return t.Scope == "machine" || t.Scope == "unspecified" }
 
 // Resolve fails closed on unsupported platforms, unverified catalog entries,
 // unexpected sources, or unreviewed apps. It uses the same allowlist that Status
@@ -253,7 +254,10 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 		}
 		program, args = "flatpak", []string{"install", "--user", "--noninteractive", "flathub", t.PackageID}
 	case "winget":
-		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade", "--scope", t.Scope}
+		program, args = "winget", []string{"install", "--id", t.PackageID, "--exact", "--source", "winget", "--no-upgrade"}
+		if t.Scope != "unspecified" {
+			args = append(args, "--scope", t.Scope)
+		}
 	default:
 		return result, errors.New("unsupported provider")
 	}

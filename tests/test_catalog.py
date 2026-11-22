@@ -31,13 +31,18 @@ class CatalogTests(unittest.TestCase):
     def test_verified_requires_scope_and_provenance(self):
         path = self.root / "catalog/apps/vlc.yaml"
         path.write_text(path.read_text().replace("    provenance: community\n", "", 1))
-        self.assertTrue(any("scope (user|machine) and provenance" in e for e in validate(self.root)))
+        self.assertTrue(any("scope (user|machine|unspecified) and provenance" in e for e in validate(self.root)))
 
     def test_machine_scope_only_on_windows(self):
         path = self.root / "catalog/apps/vlc.yaml"
         path.write_text(path.read_text().replace("    scope: user\n    provenance: community", "    scope: machine\n    provenance: community", 1))
         self.assertTrue(any("machine scope is only supported on windows" in e for e in validate(self.root)))
 
+
+    def test_unspecified_scope_only_on_windows(self):
+        path = self.root / "catalog/apps/vlc.yaml"
+        path.write_text(path.read_text().replace("    scope: user\n    provenance: community", "    scope: unspecified\n    provenance: community", 1))
+        self.assertTrue(any("unspecified scope is only supported on windows" in e for e in validate(self.root)))
     def test_allowlist_dependencies_must_match_catalog(self):
         path = self.root / "catalog/install-allowlist.yaml"
         path.write_text(path.read_text().replace("      - Microsoft.VCRedist.2015+.arm64\n", "", 1))

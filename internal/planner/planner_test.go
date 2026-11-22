@@ -131,6 +131,9 @@ func TestNoticesWarnBeforeConsent(t *testing.T) {
 		!strings.Contains(notices[2], "winget may also install declared dependencies if missing: Microsoft.VCRedist.2015+.x64") {
 		t.Fatalf("notices %v", notices)
 	}
+	if got := (Operation{Scope: "unspecified", Provenance: "upstream"}).Notices(); len(got) != 1 || !strings.Contains(got[0], "may ask for administrator approval") {
+		t.Fatalf("unspecified scope notice %v", got)
+	}
 	if got := (Operation{Scope: "user", Provenance: "upstream"}).Notices(); len(got) != 0 {
 		t.Fatalf("unexpected notices %v", got)
 	}
