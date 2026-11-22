@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — H3 + H4
+## Unreleased
+
+- Linux prerequisite bootstrap: when `setup --yes` finds Flatpak missing, install it through an allowlisted native distribution package manager with explicit elevation; add and verify the official user-scoped Flathub remote when missing. Fail closed on unknown distributions, remote conflicts and unattended sudo. Setup and install remain idempotent. — H3 + H4
 
 - Rules (AGENTS.md, CLAUDE.md, ADR-0006 amendment): several apps per PR, real-device acceptance after merge with revert on failure, community packages accepted by default with notices.
 - Install: new `scope: unspecified` for WinGet manifests without a Scope (no `--scope` flag; treated like machine scope). CoMaps on Windows and Kiwix Desktop (Flathub, risk accepted) on Linux join the single setup.

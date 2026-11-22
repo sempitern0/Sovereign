@@ -11,8 +11,14 @@ import (
 	"github.com/sempitern0/Sovereign/internal/catalog"
 	"github.com/sempitern0/Sovereign/internal/install"
 	"github.com/sempitern0/Sovereign/internal/planner"
+	"github.com/sempitern0/Sovereign/internal/prerequisites"
 	"github.com/sempitern0/Sovereign/internal/state"
 )
+
+// prepareFlatpak is replaceable in tests so the suite never installs system packages during CI.
+var prepareFlatpak = func(ctx context.Context, runner install.Runner, interactive, consent bool) (bool, error) {
+	return prerequisites.Prepare(ctx, prerequisites.HostSystem{}, runner, interactive, consent)
+}
 
 // Outcomes reported per application by `apply --profile`.
 const (
@@ -39,7 +45,25 @@ func (o profileOutcome) incomplete() bool {
 // returns 1 if the profile is incomplete, 3 if consent is missing.
 func applyProfile(c catalog.Catalog, profileID string, consent bool, engine install.Engine, verbose bool) int {
 	ctx := context.Background()
-	plan, err := planner.Build(c, profileID, planner.Device{Platform: runtime.GOOS, Providers: detectProviders()})
+	providers := detectProviders()
+	if runtime.GOOS == "linux" && !providers["flatpak"] {
+		if !consent {
+			fmt.Fprintln(os.Stderr, "Flatpak is missing. Sovereign can install it and configure Flathub during setup.")
+			fmt.Fprintln(os.Stderr, "No changes made. Run setup --yes after reviewing the requirements.")
+			return 3
+		}
+		fmt.Println("Preparing Linux: installing Flatpak and configuring Flathub (administrator approval may be required)...")
+		if _, err := prepareFlatpak(ctx, engine.Runner, engine.Interactive, consent); err != nil {
+			fmt.Fprintln(os.Stderr, "Cannot prepare Flatpak:", err)
+			return 1
+		}
+		providers = detectProviders()
+		if !providers["flatpak"] {
+			fmt.Fprintln(os.Stderr, "Flatpak was installed but is not available to Sovereign. Open a new terminal and retry.")
+			return 1
+		}
+	}
+	plan, err := planner.Build(c, profileID, planner.Device{Platform: runtime.GOOS, Providers: providers})
 	if err != nil {
 		return loadError(err)
 	}

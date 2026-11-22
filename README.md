@@ -28,6 +28,14 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 - Windows can use `sovereign.ps1 privacy audit` (or the new wizard menu option) for a **read-only** inventory of selected privacy settings and services. No process, service, telemetry policy, scheduled task, Defender or Windows Update component is disabled. See [Windows privacy](docs/WINDOWS_PRIVACY.md).
 - A future opt-in privacy plan will require safe rollback and explicit approval for each compatible setting.
 
+## Instalación automática de requisitos Linux
+
+En Linux, `sovereign.sh` instala Go en el directorio del usuario si hace falta (desde código fuente). Al autorizar **Preparar este equipo** o ejecutar `setup --yes`, Sovereign detecta si falta Flatpak. En Debian/Ubuntu y derivados conocidos, Fedora/RHEL, Arch/Manjaro y openSUSE, utiliza exclusivamente el gestor oficial identificado en `/etc/os-release` para instalarlo, mostrando la solicitud de `sudo` cuando corresponde. En Ubuntu/Debian actualiza primero los índices de paquetes oficiales. Después añade el remoto **Flathub de usuario**, únicamente desde `https://dl.flathub.org/repo/flathub.flatpakrepo`, verifica su URL y continúa con las aplicaciones del catálogo.
+
+No cambia repositorios del sistema ni agrega fuentes arbitrarias; si un remoto llamado `flathub` tiene otra URL, detiene la preparación en lugar de sobrescribirlo. Sin `--yes` o en una sesión no interactiva que requiera `sudo`, **no ejecuta cambios privilegiados**. Las plataformas no reconocidas terminan con un error explícito y sin ejecutar gestores no aprobados. La primera ejecución requiere Internet; una repetición reutiliza Flatpak, Flathub y las aplicaciones existentes.
+
+El comando `plan` y `status` siguen siendo de solo lectura. La preparación no desinstala paquetes ni desactiva servicios.
+
 ## Una sola preparación
 
 Sovereign está diseñado para uso personal en equipos **nuevos o existentes**. No hay perfiles entre los que elegir: el asistente prepara una única configuración, comprueba las aplicaciones existentes y solo instala las que falten.

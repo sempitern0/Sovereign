@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/sempitern0/Sovereign/internal/install"
 )
 
 func TestSetupRejectsUnexpectedArguments(t *testing.T) {
@@ -51,5 +55,38 @@ func TestSetupRepairsMissingSoftwareAndIsIdempotent(t *testing.T) {
 	}
 	if len(runner.interactive) != before {
 		t.Fatalf("second setup installed apps again")
+	}
+}
+
+func TestSetupMissingLinuxProviderIsPreparedOnlyWithConsent(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux only test")
+	}
+	beforeProviders := detectProviders
+	beforePrepare := prepareFlatpak
+	withStateDir(t)
+	defer func() { detectProviders = beforeProviders; prepareFlatpak = beforePrepare }()
+	providerPresent := false
+	detectProviders = func() map[string]bool { return map[string]bool{"flatpak": providerPresent} }
+	prepareCalls := 0
+	prepareFlatpak = func(ctx context.Context, runner install.Runner, interactive, consent bool) (bool, error) {
+		prepareCalls++
+		if !consent {
+			t.Fatal("missing consent")
+		}
+		providerPresent = true
+		return true, nil
+	}
+	host := &fakeHost{installed: allInstalled(t)}
+	runner := &scriptedRunner{respond: host.respond}
+	withProcess(t, runner, false)
+	if code := run([]string{"setup"}); code != 3 || prepareCalls != 0 {
+		t.Fatalf("without consent: code=%d preparer=%d", code, prepareCalls)
+	}
+	if code := run([]string{"setup", "--yes"}); code != 0 || prepareCalls != 1 {
+		t.Fatalf("with consent: code=%d preparer=%d", code, prepareCalls)
+	}
+	if code := run([]string{"setup", "--yes"}); code != 0 || prepareCalls != 1 {
+		t.Fatalf("second call: code=%d preparer=%d", code, prepareCalls)
 	}
 }

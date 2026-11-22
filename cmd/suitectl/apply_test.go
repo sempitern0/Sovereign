@@ -85,20 +85,32 @@ func missingThenInstalled(installed *bool) func(string, []string) (string, error
 	}
 }
 
-func TestApplyExplainsMissingFlathubRemote(t *testing.T) {
+func TestApplyFailsIfNewFlathubRemoteCannotBeVerified(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Flathub applies to Linux")
 	}
+	// The provider accepts remote-add but never reports the remote.
+	// Sovereign must fail closed rather than silently installing apps.
 	runner := &scriptedRunner{respond: func(string, []string) (string, error) { return "", nil }}
 	withProcess(t, runner, false)
 	code, stderr := captureStderr(t, func() int { return run([]string{"apply", "--app", "localsend", "--yes"}) })
-	if code != 1 || !strings.Contains(stderr, install.FlathubRemoteCommand) {
+	if code != 1 || !strings.Contains(stderr, "Flathub") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
+	added := 0
 	for _, call := range runner.calls {
-		if slices.Contains(call, "install") || slices.Contains(call, "remote-add") {
-			t.Fatalf("Sovereign must not change remotes or install: %v", call)
+		if slices.Contains(call, "install") {
+			t.Fatalf("installation started without a verified Flathub remote: %v", call)
 		}
+		if slices.Contains(call, "remote-add") {
+			added++
+			if !slices.Contains(call, "--user") || !slices.Contains(call, "https://dl.flathub.org/repo/flathub.flatpakrepo") {
+				t.Fatalf("remote-add used an unapproved source: %v", call)
+			}
+		}
+	}
+	if added != 1 {
+		t.Fatalf("remote-add called %d times: %v", added, runner.calls)
 	}
 }
 

@@ -42,7 +42,26 @@ func printPlan(plan planner.Plan, title string, verbose bool) {
 		summary += fmt.Sprintf(", %d not yet available on this platform", unavailable)
 	}
 	fmt.Println(summary)
+	unavailableProviders := map[string]int{}
 	for _, op := range plan.Operations {
+		if op.Status == "provider_unavailable" {
+			unavailableProviders[op.Provider]++
+		}
+	}
+	mentionedProvider := map[string]bool{}
+	for _, op := range plan.Operations {
+		if !verbose && op.Status == "provider_unavailable" {
+			if !mentionedProvider[op.Provider] {
+				mentionedProvider[op.Provider] = true
+				fmt.Printf("  %s missing (%d applications). Setup can prepare this dependency after consent.\n", op.Provider, unavailableProviders[op.Provider])
+				if op.Provider == "flatpak" && plan.Platform == "linux" {
+					fmt.Println("    Next: run Sovereign setup --yes to install Flatpak and configure Flathub.")
+				} else if op.NextStep != "" {
+					fmt.Println("    Next:", op.NextStep)
+				}
+			}
+			continue
+		}
 		if !verbose && op.Status == "installed" {
 			continue
 		}
