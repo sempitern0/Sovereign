@@ -165,9 +165,9 @@ func (w *wizard) run() int {
 			}
 		case 8:
 			fmt.Fprintln(w.output, "Biblioteca offline — instalación y datos separados:")
-			fmt.Fprintln(w.output, "  Kiwix: se instala con «Preparar este equipo» en Windows (Kiwix JS); Linux pendiente.")
+			fmt.Fprintln(w.output, "  Kiwix: se instala con «Preparar este equipo» (Windows: Kiwix JS; Linux: Kiwix Desktop).")
 			fmt.Fprintln(w.output, "    Wikipedia y otros contenidos ZIM — https://library.kiwix.org/")
-			fmt.Fprintln(w.output, "  CoMaps: se instala con «Preparar este equipo» en Linux; Windows pendiente de verificación.")
+			fmt.Fprintln(w.output, "  CoMaps: se instala con «Preparar este equipo» en Windows y Linux.")
 			fmt.Fprintln(w.output, "    Las regiones se descargan dentro de la app antes de viajar — https://www.comaps.app/")
 			fmt.Fprintln(w.output, "  Los datos (ZIM, mapas) no se descargan automáticamente.")
 			fmt.Fprintln(w.output, "  Documentación: docs/OFFLINE_LIBRARY.md")

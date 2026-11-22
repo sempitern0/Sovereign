@@ -10,10 +10,10 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
 - Go CLI: `suitectl doctor [--json]`, `catalog list`, `profiles list`, `plan --profile essential [--json]`, and `version`.
 - Versioned YAML application catalog and profiles, JSON Schema v1 with semantic validation.
-- LocalSend, VLC and LibreOffice have reviewed Windows/WinGet and Linux/Flatpak identities; CoMaps (offline maps) has a reviewed Linux/Flathub identity and stays pending on Windows; Kiwix (offline Wikipedia) has a reviewed Windows/WinGet identity (Kiwix JS Electron, user scope) and stays pending on Linux. **Real-device first-install acceptance is still pending for VLC, LibreOffice, CoMaps and Kiwix**.
+- LocalSend, VLC and LibreOffice have reviewed Windows/WinGet and Linux/Flatpak identities; CoMaps (offline maps) and Kiwix (offline Wikipedia: Kiwix JS on Windows, Kiwix Desktop on Linux) are allowlisted on both platforms. **Real-device first-install acceptance is still pending for VLC, LibreOffice, CoMaps and Kiwix** (accepted after merge, per AGENTS.md).
 - Dependency-aware, platform-specific deterministic planning with blocked/unverified status and explicit alternative choices.
 - Windows/Linux CI, Go tests and negative catalog tests.
-- `apply --app <id> --yes` and `verify --app <id>` work on the host OS for allowlisted apps only (LocalSend, VLC, LibreOffice; CoMaps on Linux; Kiwix on Windows). Setup apps not yet verified on the current platform are skipped and reported as "not yet available". Other apps and Android remain blocked; `plan` is read-only.
+- `apply --app <id> --yes` and `verify --app <id>` work on the host OS for allowlisted apps only (LocalSend, VLC, LibreOffice, CoMaps, Kiwix). Setup apps not yet verified on the current platform are skipped and reported as "not yet available". Other apps and Android remain blocked; `plan` is read-only.
 - The catalog, profiles and the reviewed install allowlist are embedded in the binary, so `suitectl` works from any directory without a checkout. `--root <checkout>` reads a development copy of the catalog and profiles; the allowlist is always the embedded one ([ADR-0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md)).
 - `apply --profile essential` installs everything the profile still needs with **one** consent covering the plan it prints first, keeps going after a failure, skips applications whose dependencies failed and ends with a per-app summary (exit 1 if incomplete; re-run to finish). Results go to a small local journal without personal data, and a lock prevents two runs at once ([ADR-0007](docs/architecture/adr/0007-profile-apply-and-journal.md)).
 - `status [--profile essential] [--json]` compares, per application, what the profile wants, what the package manager reports now and the last result in the journal, and points out drift (for example an app removed outside Sovereign). It is read-only.
@@ -23,7 +23,7 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
 ## Privacy and knowledge offline (initial integration)
 
-- Kiwix and CoMaps are catalog entries; they are installable only once their package is verified and allowlisted. Wikipedia ZIM libraries and offline regional maps require independent downloads, storage and integrity verification. See [Offline library](docs/OFFLINE_LIBRARY.md).
+- Installing Kiwix or CoMaps does not download content: Wikipedia ZIM libraries and offline regional maps require independent downloads, storage and integrity verification. See [Offline library](docs/OFFLINE_LIBRARY.md).
 - Sovereign only catalogs free/open-source software. WinHance (PolyForm Shield, not OSI) was removed from the catalog.
 - Windows can use `sovereign.ps1 privacy audit` (or the new wizard menu option) for a **read-only** inventory of selected privacy settings and services. No process, service, telemetry policy, scheduled task, Defender or Windows Update component is disabled. See [Windows privacy](docs/WINDOWS_PRIVACY.md).
 - A future opt-in privacy plan will require safe rollback and explicit approval for each compatible setting.

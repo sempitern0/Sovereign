@@ -2,7 +2,7 @@
 
 Fuente única del estado del proyecto y de la **siguiente acción**. Actualizarla al final de cada iteración (ver «Registro de iteración»). El chat o la memoria de un agente no son el registro del proyecto.
 
-Última actualización: 2026-11-21.
+Última actualización: 2026-11-22.
 
 ## Hitos
 
@@ -31,14 +31,15 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
   - **LocalSend** — validado en dispositivo real (H2).
   - **VLC** — *simulado; en Windows real validada la detección de una instalación existente (máquina) y la idempotencia; instalación, UAC y cancelación pendientes.* Windows en ámbito máquina (aviso de UAC, solo desde terminal); Linux desde el Flathub comunitario.
   - **LibreOffice** — *simulado; en Windows real validada la detección de una instalación existente y la idempotencia; instalación, UAC, cancelación y VC++ Redistributable pendientes.* Windows en ámbito máquina con la dependencia declarada del Visual C++ Redistributable; Linux desde Flathub (mantenido por desarrolladores de LibreOffice).
-  - **CoMaps** — *simulado; Linux desde Flathub (`app.comaps.comaps`, comunitario) en el setup único. Windows `pending`: el manifiesto WinGet `CoMaps.CoMaps` no declara ámbito.*
-  - **Kiwix** — *simulado; Windows con Kiwix JS Electron (`Kiwix.KiwixJS.Electron`, ámbito usuario, upstream) en el setup único. Linux `pending`: el Flatpak no se mantiene.*
+  - **CoMaps** — *simulado; pendiente de aceptación real.* Linux desde Flathub (`app.comaps.comaps`, comunitario); Windows con WinGet `CoMaps.CoMaps` (`scope: unspecified`: sin `--scope`, aviso de posible UAC, dependencia VC++ x64).
+  - **Kiwix** — *simulado; pendiente de aceptación real.* Windows con Kiwix JS Electron (`Kiwix.KiwixJS.Electron`, ámbito usuario); Linux con Kiwix Desktop de Flathub (`org.kiwix.desktop`, riesgo aceptado: sin actualizaciones desde 2024-12 y runtime sin soporte).
   - Android: no soportado aún.
 - El plan muestra el ámbito (`scope`) y el origen (`provenance`) de cada paquete verificado, y avisa antes del consentimiento si pedirá administrador o si es un paquete comunitario (ADR-0006).
 - Uso: con terminal, el gestor muestra progreso y avisos; sin terminal o con `--non-interactive`, WinGet no pregunta y falla en vez de colgarse.
 
 ## Siguiente acción
 
+0. **Fusionar #14 → #15 → #16** tras revisión y hacer la aceptación real del setup completo después (norma flexibilizada el 2026-11-22). Si una app falla en real, revertirla o volver su plataforma a `pending` en la siguiente PR. Validar también, como hipótesis abiertas: que `winget install` sin `--scope` instala CoMaps (UAC o no) y que 3 `winget list` simultáneos no fallan.
 1. **Revisar la integración en `main`** de H4-1 (PR #8 ya fusionada): comprobar la CI de `main`, repetibilidad de las compilaciones y salud del catálogo. La publicación de una versión etiquetada todavía no se ha probado.
 2. **Publicar la primera release** cuando el mantenedor lo decida: `git tag -a v0.4.0 -m "suitectl 0.4.0" && git push origin v0.4.0` (o `v0.4.0-rc.1` para una pre-release). El workflow firma la procedencia y crea la release. Verificarla con las instrucciones del README («Download a release») y registrar aquí el resultado.
 3. **Aceptación real del perfil** en un equipo sin VLC ni LibreOffice, idealmente ya con el binario de la release (sin Git ni Go):
@@ -80,6 +81,8 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 - La detección «no instalado» de WinGet conserva un texto en inglés solo como respaldo; la señal principal es el código de salida.
 
 ## Registro de iteración
+
+- **2026-11-22 · feat/kiwix-windows (#16) · Normas flexibles, ámbito `unspecified`, rendimiento y refactor.** Decisiones del mantenedor: PRs por lotes, aceptación real tras fusionar (con reversión), paquetes comunitarios y ámbito máquina/no declarado admitidos con aviso; sigue solo software libre y la decisión explícita para paquetes sin mantenimiento. Cambios: `AGENTS.md`, `CLAUDE.md` y enmienda de ADR-0006; `scope: unspecified` (Go, JSON Schema, validador Python, planner y WinGet sin `--scope`, trata como máquina); CoMaps Windows y Kiwix Linux habilitados; `install.Cache` + inspección paralela (máx. 3); CLI con tabla de comandos y `output.go`. **Medido con proveedor simulado:** `setup --yes` con 5 apps Flatpak que faltan pasa de 25 llamadas (5 install, 15 list, 5 remotes) a 12 (5 install, 6 list, 1 remotes). Pruebas (Linux, simulado): gofmt, `go vet` (también `GOOS=windows`), `go test -race ./...`, validador, tests Python, `sh -n` y release en seco, en verde. **Hipótesis no validadas:** WinGet sin `--scope` con el instalador NSIS de CoMaps; concurrencia de `winget list` en un equipo real; ganancia de tiempo real en Windows (no medida).
 
 - **2026-11-21 · feat/kiwix-windows · Kiwix en el setup único (Windows).** Decisión del mantenedor: Kiwix JS en Windows y Linux pendiente. WinGet `Kiwix.KiwixJS.Electron` 3.9.3-E (manifiesto en microsoft/winget-pkgs; publisher Kiwix; GPL-3.0; NSIS x86 desde github.com/kiwix/kiwix-js-pwa con SHA-256; instalador de ámbito usuario `/CURRENTUSER`; sin `PackageDependencies`) → `scope: user`, `provenance: upstream`. Kiwix Desktop no existe en WinGet. Linux `pending`: Flathub `org.kiwix.desktop` 2.4.1 sin cambios desde 2024-12 y runtime KDE 5.15-23.08 sin soporte. Añadido a `profiles/essential.yaml`. Pruebas (Linux, simulado; compilación de tests con GOOS=windows): gofmt, go vet, go test, validador y tests Python en verde. No ejecutado: WinGet real, CI Windows.
   - Aceptación pendiente (Windows real): `.\sovereign.ps1 setup` lista Kiwix sin aviso de UAC; `setup --yes` lo instala sin pedir administrador y aparece en el menú Inicio; `verify --app kiwix`; segunda ejecución sin cambios; abrir Kiwix JS, descargar un ZIM pequeño y leerlo sin red.
