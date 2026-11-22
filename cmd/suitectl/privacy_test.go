@@ -23,7 +23,10 @@ func TestOfflineCatalogAndWindowsToolNeverAutoInstall(t *testing.T) {
 	if _, ok := c.Profiles["offline"]; ok {
 		t.Fatal("unused offline profile must not be user-selectable")
 	}
-	for _, id := range []string{"kiwix", "comaps", "winhance"} {
+	if _, ok := c.Apps["winhance"]; ok {
+		t.Fatal("winhance was removed from the catalog (non-free licence) and must not return")
+	}
+	for _, id := range []string{"kiwix", "comaps"} {
 		if _, ok := c.Apps[id]; !ok {
 			t.Fatalf("%s missing from catalog", id)
 		}

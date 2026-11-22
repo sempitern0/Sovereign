@@ -42,6 +42,5 @@ func runPrivacy(args []string) int {
 		fmt.Printf("  %-38s %s\n", item.Label, item.Value)
 	}
 	fmt.Println("No system changes. Values can vary by Windows edition, GPO and MDM policy.")
-	fmt.Println("For manual review: https://github.com/memstechtips/Winhance (PolyForm Shield licence).")
 	return 0
 }

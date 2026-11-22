@@ -78,7 +78,7 @@ Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is r
 ## Offline content and Windows privacy safeguards
 
 - App installation and offline content downloads are separate consented steps. Do not mark Kiwix/CoMaps installed or offline-ready merely because a manifest exists. Unverified entries must not be added to the embedded install allowlist.
-- WinHance's PolyForm Shield 1.0.0 licence is source-available and restrictive; never label it as OSI free/open source. Never pipe `irm` or `curl` directly into a shell.
+- Only free/open-source applications belong in the catalog. WinHance (PolyForm Shield 1.0.0, source-available) was removed on 2026-11-21 by maintainer decision; do not reintroduce non-OSI tools. Never pipe `irm` or `curl` directly into a shell.
 - Windows privacy auditing is read-only. Never disable security controls, updates, critical Windows services or processes automatically. A mutable privacy adjustment needs a tested backup, rollback, Windows-version compatibility and explicit per-action consent.
 
 ## Personal single-setup contract (2026-11-21)
