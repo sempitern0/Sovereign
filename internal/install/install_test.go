@@ -129,7 +129,7 @@ func TestRejectUntrustedRemote(t *testing.T) {
 	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
 	f := &fakeRunner{output: []string{"", "flathub\thttps://untrusted.example/repo\n"}}
 	_, err := (Engine{Runner: f, Platform: runtime.GOOS}).Apply(context.Background(), target, true)
-	if !errors.Is(err, ErrFlathubRemoteMissing) || len(f.calls) != 2 {
+	if !errors.Is(err, ErrFlathubRemoteConflict) || len(f.calls) != 2 {
 		t.Fatalf("unexpected result %v", err)
 	}
 }
@@ -457,5 +457,28 @@ func TestErrorClassIsStableAndSafe(t *testing.T) {
 		if got != want || strings.Contains(got, "Users") {
 			t.Errorf("ErrorClass(%v) = %q, want %q", err, got, want)
 		}
+	}
+}
+
+func TestFlatpakAddsMissingOfficialUserRemoteOnlyWithConsent(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux only test")
+	}
+	target, _ := (Engine{}).Resolve(reviewedCatalog(), "localsend", "linux")
+	f := &fakeRunner{output: []string{
+		"", // initial list: package absent
+		"", // user remotes: none configured
+		"", // remote-add (user scope, official URL)
+		"flathub https://dl.flathub.org/repo/", // verification
+		"", // app install
+		"org.localsend.localsend_app\n", // installed
+	}}
+	result, err := (Engine{Runner: f, Platform: "linux"}).Apply(context.Background(), target, true)
+	if err != nil || result.State != Installed || !result.Changed {
+		t.Fatalf("result %+v err=%v", result, err)
+	}
+	if len(f.calls) != 6 || f.calls[2].program != "flatpak" ||
+		!reflect.DeepEqual(f.calls[2].args, []string{"remote-add", "--user", "--if-not-exists", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"}) {
+		t.Fatalf("unexpected Flatpak bootstrap command: %+v", f.calls)
 	}
 }

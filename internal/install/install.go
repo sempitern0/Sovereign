@@ -42,7 +42,8 @@ const (
 var ErrConsentRequired = errors.New("installation requires explicit consent (--yes)")
 
 // ErrFlathubRemoteMissing means the user-scoped official Flathub remote is absent.
-var ErrFlathubRemoteMissing = errors.New("official user Flathub remote missing; configure it separately before applying")
+var ErrFlathubRemoteMissing = errors.New("official user Flathub remote missing")
+var ErrFlathubRemoteConflict = errors.New("Flathub remote uses an untrusted URL; refusing to replace it")
 
 // ErrAdminApprovalNeedsTerminal stops a machine-scope install that would trigger
 // an administrator prompt nobody is attending.
@@ -264,7 +265,18 @@ func (e Engine) Apply(ctx context.Context, t Target, consent bool) (Result, erro
 	switch t.Provider {
 	case "flatpak":
 		if err := e.Cache.flathub(ctx, e.requireFlathub); err != nil {
-			return result, err
+			if !errors.Is(err, ErrFlathubRemoteMissing) {
+				return result, err
+			}
+			// The official user-scoped remote is a reviewed prerequisite of
+			// this explicitly authorized installation. Never overwrite an
+			// existing remote with a conflicting URL.
+			if err := e.install(ctx, "flatpak", []string{"remote-add", "--user", "--if-not-exists", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"}); err != nil {
+				return result, fmt.Errorf("configure Flathub user remote: %w", err)
+			}
+			if err := e.Cache.flathub(ctx, e.requireFlathub); err != nil {
+				return result, fmt.Errorf("verify Flathub user remote: %w", err)
+			}
 		}
 		program, args = "flatpak", []string{"install", "--user", "--noninteractive", "flathub", t.PackageID}
 	case "winget":
@@ -306,8 +318,11 @@ func (e Engine) requireFlathub(ctx context.Context) error {
 	}
 	for _, line := range strings.Split(remote, "\n") {
 		fields := strings.Fields(line)
-		if len(fields) == 2 && fields[0] == "flathub" && strings.TrimRight(fields[1], "/") == flathubRepo {
-			return nil
+		if len(fields) > 0 && fields[0] == "flathub" {
+			if len(fields) == 2 && strings.TrimRight(fields[1], "/") == flathubRepo {
+				return nil
+			}
+			return fmt.Errorf("Flathub remote has an untrusted URL: %w", ErrFlathubRemoteConflict)
 		}
 	}
 	return ErrFlathubRemoteMissing
