@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -9,8 +10,10 @@ import (
 )
 
 func TestConciseHumanOutputWhenProfileIsComplete(t *testing.T) {
-	ls, vlc, lo := packageIDs()
-	host := &fakeHost{installed: map[string]bool{ls: true, vlc: true, lo: true}}
+	installed := allInstalled(t)
+	host := &fakeHost{installed: installed}
+	summary := fmt.Sprintf("%d installed", len(installed))
+	already := fmt.Sprintf("%d already installed", len(installed))
 	withProcess(t, &scriptedRunner{respond: host.respond}, true)
 	withStateDir(t)
 	for _, args := range [][]string{
@@ -26,7 +29,7 @@ func TestConciseHumanOutputWhenProfileIsComplete(t *testing.T) {
 			strings.Contains(out, "Journal:") || strings.Contains(out, "outside Sovereign") {
 			t.Fatalf("%v contains irrelevant noise: %s", args, out)
 		}
-		if !strings.Contains(out, "3 installed") && !strings.Contains(out, "3 already installed") {
+		if !strings.Contains(out, summary) && !strings.Contains(out, already) {
 			t.Fatalf("%v lacks concise success summary: %s", args, out)
 		}
 	}
@@ -48,8 +51,10 @@ func TestVerboseDisplaysRequestedDetail(t *testing.T) {
 }
 
 func TestMissingAppShowsActionableAdminNotice(t *testing.T) {
-	ls, _, lo := packageIDs()
-	host := &fakeHost{installed: map[string]bool{ls: true, lo: true}}
+	_, vlc, _ := packageIDs()
+	installed := allInstalled(t)
+	delete(installed, vlc) // only VLC is missing
+	host := &fakeHost{installed: installed}
 	withProcess(t, &scriptedRunner{respond: host.respond}, false)
 	withStateDir(t)
 	code, out := captureStdout(t, func() int { return run([]string{"plan", "--profile", "essential"}) })
