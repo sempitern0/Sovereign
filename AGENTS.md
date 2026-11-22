@@ -6,7 +6,7 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 1. Read `docs/STATUS.md`: active milestone, what works, known limitations and the **next action**.
 2. Check branch, working tree and open PRs. Preserve concurrent changes.
 3. Read only what the task needs (map below). Read code and tests before docs when they disagree; record any discrepancy in STATUS.
-4. Implement the smallest safe, tested change in its own branch/PR unless explicitly asked to extend the active PR. Never merge automatically.
+4. Implement a coherent, tested change in its own branch/PR (several applications may share one PR) unless explicitly asked to extend the active PR. Never merge automatically.
 5. Finish by updating `docs/STATUS.md` (iteration log + next action). Record tests actually run, environment (real or simulated) and limitations. Never invent IDs, versions, API availability or success claims.
 
 ## What to read for each task
@@ -26,10 +26,10 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 
 ## Security invariants
 - `doctor`, `catalog list`, `profiles list`, `plan`, `status` and `verify` are read-only (`status` reads the journal with `state.Store.Peek`, never `Load`). Only `apply --app <id> --yes` and `apply --profile <id> --yes` change the host, and only for allowlisted applications; everything else fails closed.
-- Installation requires a `verified` catalog entry that matches `catalog/install-allowlist.yaml` field by field. The allowlist is embedded at build time and must never be read from `--root` or any runtime path. Adding an entry enables real installs: one application per reviewed PR, with real-device acceptance.
+- Installation requires a `verified` catalog entry that matches `catalog/install-allowlist.yaml` field by field. The allowlist is embedded at build time and must never be read from `--root` or any runtime path. Adding entries enables real installs: they go through a reviewed PR (batches allowed); real-device acceptance follows the merge (see the checklist).
 - Never install `pending` or `unsupported` packages. Never treat `inspection_required` as proof of an installed package. Ambiguous provider output fails closed.
 - Package managers run with structured arguments, never through a shell. No remote-script pipelines, silent elevation, repository/remote additions, auto-accepted agreements, telemetry or destructive operations (no uninstall, cleanup or overwrite by default).
-- Install scope is `user` unless the allowlist entry declares `machine` (Windows only, ADR-0006): the plan warns, and `apply` runs it only from an attended terminal so the OS shows its own administrator prompt. Community-built packages (`provenance: community`) are flagged to the user and accepted per app by the maintainer.
+- Install scope is `user`, `machine` or `unspecified` (the last two Windows only, ADR-0006). `machine` and `unspecified` (the WinGet manifest declares no `Scope`; Sovereign then passes no `--scope` and lets WinGet choose) may raise an administrator prompt: the plan warns and `apply` runs them only from an attended terminal so the OS shows its own prompt. Community-built packages (`provenance: community`) are accepted by default and always flagged to the user before consent.
 - No installation side effects in tests: use simulated providers (`install.Runner`, `newRunner`/`isTerminal`/`detectProviders` in the CLI); CLI tests never touch the real state directory (`newStore`, set in `TestMain`). Treat JSON status 0 as successful planning only.
 - Never store secrets, user files, host identifiers or personal paths in Git, logs, plans, the journal or exported profiles. The journal (`internal/state`) records error classes only (`install.ErrorClass`), never raw package-manager output.
 - Multisuite is optional. Local use cannot depend on a network, account, VPN or NAS; a connector must degrade to the local flow.
@@ -38,12 +38,17 @@ Sovereign prepares Windows, Linux and (guided) Android devices with a local-firs
 
 ## Adding or verifying an application
 1. Confirm the official upstream, license and, per platform, the exact package ID and source in the official channel (WinGet community manifest, Flathub page). Record the source URL and `verified_at` date. Never guess IDs. If a page is not reachable, read the channel's manifest repository with git (`microsoft/winget-pkgs` sparse checkout, `flathub/<app-id>`).
-2. From the manifest, record `scope` (WinGet installers' `Scope`; Flatpak is always `user`) and `provenance` (`upstream` if the channel installs the project's own binaries, `community` if a third party builds it; Flathub's "unverified/community" notice counts). Also record WinGet `PackageDependencies` in `provider_dependencies`. A machine-only package, a community package or one with provider dependencies needs the maintainer's explicit decision.
+2. From the manifest, record `scope` (WinGet installers' `Scope`; `unspecified` when the manifest declares none; Flatpak is always `user`) and `provenance` (`upstream` if the channel installs the project's own binaries, `community` if a third party builds it or upstream maintenance cannot be confirmed). Also record WinGet `PackageDependencies` in `provider_dependencies`. Machine/unspecified scope, community provenance and provider dependencies are allowed: they are shown as notices. Still ask the maintainer before adding a package that is unmaintained (no upstream update for over a year or an end-of-life runtime) and record the decision in `notes`.
 3. Set the platform entry to `verified` in `catalog/apps/<id>.yaml` with those fields and evidence in `notes`; leave other platforms `pending`/`unsupported`.
 4. Add matching entries to `catalog/install-allowlist.yaml` (application, upstream, platform, provider, package_id, source, scope, provenance and, if any, provider_dependencies).
 5. Run the quality checks; Go and Python CI fail if allowlist and catalog differ. Make sure no test uses an approved app with a real runner (use `withProcess` in CLI tests); tests that need an unapproved app create a fictional pending one (`catalogWithPendingApp`).
 6. Add simulated-provider tests only if behaviour differs from existing providers.
-7. Acceptance on real devices (follow the scenarios in `docs/H2_LOCALSEND.md`): clean install, `verify`, second `apply` unchanged, missing source, cancelled prompt, network loss. Record the result in STATUS before merge.
+7. Acceptance on real devices (scenarios in `docs/H2_LOCALSEND.md`: clean install, `verify`, second `apply` unchanged, missing source, cancelled prompt, network loss) may happen after merge. Until recorded in STATUS, mark the app *pending real acceptance*; if it fails, revert or set the platform back to `pending` in the next PR.
+
+## Performance
+- Each command inspects every package manager at most once per state: reuse cached `flatpak list`/`remotes` output within one run and invalidate it after an install. WinGet inspections may run concurrently (bounded); a failure is `inspection_failed`, never "missing".
+- Do not re-inspect what the same command has just inspected, except the mandatory verification after installing.
+- Tests assert provider call counts so regressions in the number of package-manager calls are caught.
 
 ## Quality checks
 ```bash
@@ -61,7 +66,7 @@ python3 tools/release.py --version 0.0.0-dev --out dist   # release dry run (rep
 Catalog edits are embedded at build time: test them with `--root .` or rebuild.
 
 ## Definition of done
-Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is recorded in STATUS; contract changes are versioned or additive; security invariants reviewed; error paths implemented and tested; no secrets in logs; reproducible commands listed; remaining risks explicit. Distinguish *implemented*, *validated with simulated providers* and *validated on real devices*.
+Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10), or the pending real-device acceptance, is recorded in STATUS; contract changes are versioned or additive; security invariants reviewed; error paths implemented and tested; no secrets in logs; reproducible commands listed; remaining risks explicit. Distinguish *implemented*, *validated with simulated providers* and *validated on real devices*.
 
 ## Terminal UX contracts
 
@@ -77,7 +82,7 @@ Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10) is r
 
 ## Offline content and Windows privacy safeguards
 
-- App installation and offline content downloads are separate consented steps. Do not mark Kiwix/CoMaps installed or offline-ready merely because a manifest exists. Unverified entries must not be added to the embedded install allowlist.
+- App installation and offline content downloads are separate consented steps. Do not mark Kiwix/CoMaps offline-ready merely because the app is installed. Unverified entries must not be added to the embedded install allowlist.
 - Only free/open-source applications belong in the catalog. WinHance (PolyForm Shield 1.0.0, source-available) was removed on 2026-11-21 by maintainer decision; do not reintroduce non-OSI tools. Never pipe `irm` or `curl` directly into a shell.
 - Windows privacy auditing is read-only. Never disable security controls, updates, critical Windows services or processes automatically. A mutable privacy adjustment needs a tested backup, rollback, Windows-version compatibility and explicit per-action consent.
 
