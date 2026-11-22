@@ -98,17 +98,23 @@ func TestSetupCreatesFlatpakDesktopLaunchersOnlyWhenAuthorized(t *testing.T) {
 	previous := desktopSync
 	t.Cleanup(func() { desktopSync = previous })
 	var seen []string
-	desktopSync = func(id string) (int,error) {
-		seen=append(seen,id)
-		return 1,nil
+	desktopSync = func(id string) (int, error) {
+		seen = append(seen, id)
+		return 1, nil
 	}
 	host := &fakeHost{installed: allInstalled(t)}
-	withProcess(t,&scriptedRunner{respond:host.respond},true)
+	withProcess(t, &scriptedRunner{respond: host.respond}, true)
 	withStateDir(t)
-	if got:=run([]string{"setup"});got!=0 {
-		t.Fatalf("read-only setup returned %d",got)
+	if got := run([]string{"setup"}); got != 0 {
+		t.Fatalf("read-only setup returned %d", got)
 	}
-	if len(seen)!=0 {t.Fatalf("read-only setup created launchers: %v",seen)}
-	if got:=run([]string{"setup","--yes"});got!=0 {t.Fatalf("authorized setup returned %d",got)}
-	if len(seen)!=len(profilePackages(t)){t.Fatalf("expected one launcher sync per application, got %v",seen)}
+	if len(seen) != 0 {
+		t.Fatalf("read-only setup created launchers: %v", seen)
+	}
+	if got := run([]string{"setup", "--yes"}); got != 0 {
+		t.Fatalf("authorized setup returned %d", got)
+	}
+	if len(seen) != len(profilePackages(t)) {
+		t.Fatalf("expected one launcher sync per application, got %v", seen)
+	}
 }
