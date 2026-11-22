@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Linux/Xubuntu desktop integration: after authorized setup, copy verified Flatpak-exported launchers into the per-user application menu and existing XDG desktop folder. Idempotent, protects unmanaged shortcuts and repairs already installed apps.
+
 - Linux prerequisite bootstrap: when `setup --yes` finds Flatpak missing, install it through an allowlisted native distribution package manager with explicit elevation; add and verify the official user-scoped Flathub remote when missing. Fail closed on unknown distributions, remote conflicts and unattended sudo. Setup and install remain idempotent. — H3 + H4
 
 - Rules (AGENTS.md, CLAUDE.md, ADR-0006 amendment): several apps per PR, real-device acceptance after merge with revert on failure, community packages accepted by default with notices.

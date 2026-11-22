@@ -98,3 +98,8 @@ Code, tests and docs agree; the milestone's acceptance evidence (PLAN §10), or 
 - `setup --yes` en Linux puede instalar Flatpak cuando no está presente, usando gestores de paquete oficiales de distribuciones explícitamente soportadas, y añadir el remoto Flathub **de usuario** con una URL oficial fija. `plan`, `status`, `doctor` y `setup` sin consentimiento siguen siendo de solo lectura.
 - No interpolar valores de `/etc/os-release` en comandos de shell ni descargar scripts remotos; construir listas fijas de argumentos. No intentar `sudo` no interactivo; rechazar fuentes remotas conflictivas y verificar el estado tras cada cambio.
 - Mantener pruebas de idempotencia, distribuciones no soportadas, confirmación, reintentos y manejo de errores. No declarar validación de instalación real de Flatpak hasta probarlo en una VM limpia.
+
+## Linux desktop launchers
+
+- After authorized `setup --yes`, synchronize *existing Flatpak-exported* desktop files of successfully installed, allowlisted applications to user-local menu and existing XDG desktop folders. Never synthesize arbitrary Exec, write to system directories, overwrite unmanaged entries or change launchers in read-only commands.
+- Synchronization failures are warnings; they do not disguise an installation failure or overwrite application state. Existing installations must be repairable idempotently by repeating setup with explicit authorization. Unit tests use fake launcher environments and no real user paths.

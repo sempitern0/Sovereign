@@ -417,6 +417,13 @@ func cmdApplyOrVerify(args []string) int {
 		printProviderHint(err, target.Provider)
 		return 1
 	}
+	if runtime.GOOS == "linux" && target.Provider == "flatpak" && *yes {
+		if n, err := desktopSync(target.PackageID); err != nil {
+			fmt.Fprintln(os.Stderr, "Desktop integration:", err)
+		} else if n > 0 {
+			fmt.Printf("Desktop: %d launcher(s) added or updated.\n", n)
+		}
+	}
 	fmt.Printf("%s: %s (%s)\n", result.Application, result.State, result.Detail)
 	return 0
 }

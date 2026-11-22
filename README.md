@@ -36,6 +36,12 @@ No cambia repositorios del sistema ni agrega fuentes arbitrarias; si un remoto l
 
 El comando `plan` y `status` siguen siendo de solo lectura. La preparación no desinstala paquetes ni desactiva servicios.
 
+## Accesos directos de Linux / Xubuntu
+
+Después de `setup --yes`, Sovereign sincroniza los archivos `.desktop` **exportados por las aplicaciones Flatpak aprobadas y ya instaladas**. Los copia a `~/.local/share/applications/` para que Xfce los encuentre aunque `XDG_DATA_DIRS` no esté preparado en la sesión; también crea un acceso ejecutable en el escritorio configurado en `~/.config/user-dirs.dirs` (por ejemplo `~/Escritorio` o `~/Desktop`) si ya existe esa carpeta.
+
+Los accesos conservan el `Exec`, icono, categorías y nombres exportados por Flatpak. No se generan lanzadores ficticios, no se ejecutan scripts de terceros ni se escriben archivos del sistema. Los archivos personales con el mismo nombre se respetan; solo se actualizan los accesos identificados como gestionados por Sovereign. Volver a ejecutar `setup --yes` repara accesos existentes y evita duplicados incluso si ya estaban instaladas todas las aplicaciones. Cuando Xfce no refresque inmediatamente el menú, cerrar sesión y volver a entrar puede ser necesario. El escritorio de Xfce puede pedir marcar un acceso como confiable la primera vez.
+
 ## Una sola preparación
 
 Sovereign está diseñado para uso personal en equipos **nuevos o existentes**. No hay perfiles entre los que elegir: el asistente prepara una única configuración, comprueba las aplicaciones existentes y solo instala las que falten.

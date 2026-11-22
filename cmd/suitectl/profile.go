@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sempitern0/Sovereign/internal/catalog"
+	"github.com/sempitern0/Sovereign/internal/desktop"
 	"github.com/sempitern0/Sovereign/internal/install"
 	"github.com/sempitern0/Sovereign/internal/planner"
 	"github.com/sempitern0/Sovereign/internal/prerequisites"
@@ -19,6 +20,10 @@ import (
 var prepareFlatpak = func(ctx context.Context, runner install.Runner, interactive, consent bool) (bool, error) {
 	return prerequisites.Prepare(ctx, prerequisites.HostSystem{}, runner, interactive, consent)
 }
+
+// desktopSync is replaceable in tests. Launchers are copied only after an
+// authorized setup has observed an installed, reviewed Flatpak application.
+var desktopSync = desktop.EnvironmentSync
 
 // Outcomes reported per application by `apply --profile`.
 const (
@@ -140,6 +145,26 @@ func applyProfile(c catalog.Catalog, profileID string, consent bool, engine inst
 		outcomes = append(outcomes, outcome)
 	}
 	recordJournal(journal)
+	if consent && runtime.GOOS == "linux" {
+		created := 0
+		for _, op := range plan.Operations {
+			if op.Provider != "flatpak" || !op.Required || failed[op.Application] {
+				continue
+			}
+			if op.Status != "installed" && op.Status != "not_installed" {
+				continue
+			}
+			n, err := desktopSync(op.PackageID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Desktop integration for %s: %v\n", op.Application, err)
+				continue
+			}
+			created += n
+		}
+		if created > 0 {
+			fmt.Printf("Desktop: %d launcher(s) added or updated for this user.\n", created)
+		}
+	}
 	return printProfileSummary(profileID, outcomes, verbose)
 }
 
