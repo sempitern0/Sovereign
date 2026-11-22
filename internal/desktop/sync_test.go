@@ -125,6 +125,7 @@ func TestExportedIconIsVisibleWithoutXDGExportPath(t *testing.T) {
 }
 
 func TestFlatpakManagedExportSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" { t.Skip("Flatpak exports and symlink semantics are Linux-specific") }
 	h, data, id := fixture(t)
 	exported := filepath.Join(data, "flatpak", "exports", "share", "applications", id+".desktop")
 	targetDir := filepath.Join(data, "flatpak", "app", id, "x86_64", "stable", "active", "export", "share", "applications")
@@ -154,6 +155,7 @@ func TestFlatpakManagedExportSymlink(t *testing.T) {
 }
 
 func TestRejectExportSymlinkOutsideFlatpakApp(t *testing.T) {
+	if runtime.GOOS == "windows" { t.Skip("Flatpak exports and symlink semantics are Linux-specific") }
 	h, data, id := fixture(t)
 	exported := filepath.Join(data, "flatpak", "exports", "share", "applications", id+".desktop")
 	target := filepath.Join(h, "untrusted.desktop")
