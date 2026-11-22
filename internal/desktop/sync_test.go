@@ -104,3 +104,22 @@ func TestCustomDesktopDirectoryUnderHome(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestExportedIconIsVisibleWithoutXDGExportPath(t *testing.T) {
+	h, data, id := fixture(t)
+	iconDir := filepath.Join(data, "flatpak", "exports", "share", "icons", "hicolor", "scalable", "apps")
+	if err := os.MkdirAll(iconDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	icon := filepath.Join(iconDir, id+".svg")
+	if err := os.WriteFile(icon, []byte("<svg/>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := Sync(h, data, id); err != nil || n != 2 {
+		t.Fatalf("sync: n=%d err=%v", n, err)
+	}
+	launcher, err := os.ReadFile(filepath.Join(data, "applications", id+".desktop"))
+	if err != nil || !strings.Contains(string(launcher), "Icon="+icon) {
+		t.Fatalf("icon not resolved: %s %v", launcher, err)
+	}
+}
