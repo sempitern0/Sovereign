@@ -10,13 +10,14 @@ Sovereign distingue **aplicación**, **paquete de datos** y **verificación del 
 
 ## CoMaps / mapas
 - Upstream: https://www.comaps.app/; código Apache-2.0 en https://codeberg.org/comaps/comaps.
-- Hay manifiesto Flatpak público `app.comaps.comaps`. Su publicación estable y soporte requieren QA; no se habilita instalación en H2 sin pruebas.
+- **Linux:** Flathub `app.comaps.comaps` verificado el 2026-11-21 (estable 2026.11.07, compilado desde la etiqueta oficial; registrado como `community` al no constar verificación de Flathub). Forma parte del setup único; falta aceptación real.
+- **Windows:** WinGet `CoMaps.CoMaps` existe (2026.06.13, x64, depende de VC++ x64), pero el manifiesto no declara `Scope`. Queda `pending` hasta confirmar en un equipo real si pide administrador; mientras, el setup la omite como «no disponible aún».
 - La disponibilidad offline **requiere descargar regiones** dentro de la aplicación. Los paquetes de mapas y sus versiones son independientes del instalador.
 - Flujo futuro: seleccionar regiones (con estimación de espacio y caducidad), verificar archivos descargados mediante fuentes oficiales, exportar/importar mapas locales, no asumir que los archivos `.mwm` son portables entre versiones.
 
 ## Estado actual
-- Kiwix y CoMaps figuran en `catalog/apps` y como opciones futuras del asistente y del catálogo.
-- No se han añadido a `catalog/install-allowlist.yaml`; por tanto **Sovereign no los instala aún**.
+- CoMaps (Linux) está en la allowlist y en el setup único. Kiwix sigue pendiente.
+- Instalar la app no descarga mapas: el contenido offline requiere un paso aparte.
 - Tampoco se descargan ZIM, mapas ni bibliotecas de forma silenciosa.
 - La opción de menú explica cómo obtener contenidos y qué queda pendiente, sin prometer acceso offline antes de tener los datos.
 

@@ -2,6 +2,8 @@
 
 ## Unreleased — H3 + H4
 
+- CoMaps: verify and allowlist Linux/Flathub `app.comaps.comaps` (user scope, community) and add it to the single setup; Windows stays pending (WinGet manifest declares no scope). Plan output groups setup apps not yet available on the current platform as skipped instead of "to review".
+
 - Catalog: remove WinHance (PolyForm Shield, not free software); the privacy audit no longer links to it. Fix README reference to the removed offline profile.
 
 - Personal single-setup UX: remove unused profile choices, keep only the internal essential installation definition, add `setup [--yes]` and simplify the wizard to prepare/check/extra tools. Keep `--profile essential` compatibility and JSON schema v1.

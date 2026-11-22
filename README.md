@@ -10,10 +10,10 @@ Live status, limitations and next action: [docs/STATUS.md](docs/STATUS.md).
 
 - Go CLI: `suitectl doctor [--json]`, `catalog list`, `profiles list`, `plan --profile essential [--json]`, and `version`.
 - Versioned YAML application catalog and profiles, JSON Schema v1 with semantic validation.
-- LocalSend, VLC and LibreOffice have reviewed Windows/WinGet and Linux/Flatpak identities; **real-device first-install acceptance is still pending for VLC and LibreOffice**.
+- LocalSend, VLC and LibreOffice have reviewed Windows/WinGet and Linux/Flatpak identities; CoMaps (offline maps) has a reviewed Linux/Flathub identity and stays pending on Windows. **Real-device first-install acceptance is still pending for VLC, LibreOffice and CoMaps**.
 - Dependency-aware, platform-specific deterministic planning with blocked/unverified status and explicit alternative choices.
 - Windows/Linux CI, Go tests and negative catalog tests.
-- `apply --app <id> --yes` and `verify --app <id>` work on the host OS for allowlisted apps only (LocalSend, VLC, LibreOffice). Other apps and Android remain blocked; `plan` is read-only.
+- `apply --app <id> --yes` and `verify --app <id>` work on the host OS for allowlisted apps only (LocalSend, VLC, LibreOffice; CoMaps on Linux). Setup apps not yet verified on the current platform are skipped and reported as "not yet available". Other apps and Android remain blocked; `plan` is read-only.
 - The catalog, profiles and the reviewed install allowlist are embedded in the binary, so `suitectl` works from any directory without a checkout. `--root <checkout>` reads a development copy of the catalog and profiles; the allowlist is always the embedded one ([ADR-0004](docs/architecture/adr/0004-embedded-catalog-and-allowlist.md)).
 - `apply --profile essential` installs everything the profile still needs with **one** consent covering the plan it prints first, keeps going after a failure, skips applications whose dependencies failed and ends with a per-app summary (exit 1 if incomplete; re-run to finish). Results go to a small local journal without personal data, and a lock prevents two runs at once ([ADR-0007](docs/architecture/adr/0007-profile-apply-and-journal.md)).
 - `status [--profile essential] [--json]` compares, per application, what the profile wants, what the package manager reports now and the last result in the journal, and points out drift (for example an app removed outside Sovereign). It is read-only.

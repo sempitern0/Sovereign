@@ -82,8 +82,7 @@ func TestStatusReportsDriftAgainstJournal(t *testing.T) {
 }
 
 func TestStatusCompleteWhenEverythingIsInstalled(t *testing.T) {
-	ls, vlc, lo := packageIDs()
-	host := &fakeHost{installed: map[string]bool{ls: true, vlc: true, lo: true}}
+	host := &fakeHost{installed: allInstalled(t)}
 	withProcess(t, &scriptedRunner{respond: host.respond}, false)
 	withStateDir(t)
 	if r := statusJSON(t); !r.Complete {

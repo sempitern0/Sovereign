@@ -31,6 +31,7 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
   - **LocalSend** — validado en dispositivo real (H2).
   - **VLC** — *simulado; en Windows real validada la detección de una instalación existente (máquina) y la idempotencia; instalación, UAC y cancelación pendientes.* Windows en ámbito máquina (aviso de UAC, solo desde terminal); Linux desde el Flathub comunitario.
   - **LibreOffice** — *simulado; en Windows real validada la detección de una instalación existente y la idempotencia; instalación, UAC, cancelación y VC++ Redistributable pendientes.* Windows en ámbito máquina con la dependencia declarada del Visual C++ Redistributable; Linux desde Flathub (mantenido por desarrolladores de LibreOffice).
+  - **CoMaps** — *simulado; Linux desde Flathub (`app.comaps.comaps`, comunitario) en el setup único. Windows `pending`: el manifiesto WinGet `CoMaps.CoMaps` no declara ámbito.*
   - Android: no soportado aún.
 - El plan muestra el ámbito (`scope`) y el origen (`provenance`) de cada paquete verificado, y avisa antes del consentimiento si pedirá administrador o si es un paquete comunitario (ADR-0006).
 - Uso: con terminal, el gestor muestra progreso y avisos; sin terminal o con `--non-interactive`, WinGet no pregunta y falla en vez de colgarse.
@@ -78,6 +79,10 @@ Orden según [ADR-0005](architecture/adr/0005-roadmap-release-first.md). Estados
 - La detección «no instalado» de WinGet conserva un texto en inglés solo como respaldo; la señal principal es el código de salida.
 
 ## Registro de iteración
+
+- **2026-11-21 · feat/comaps · CoMaps en el setup único.** Linux verificado: Flathub `app.comaps.comaps` 2026.11.07 (manifiesto en github.com/flathub/app.comaps.comaps, etiqueta oficial `v2026.11.07-16` con commit fijado, última actualización 2026-11-15, runtime KDE 6.11), `scope: user`, `provenance: community` (no se pudo confirmar verificación de Flathub por el proyecto; Codeberg no es accesible desde el entorno del agente). Windows sigue `pending`: WinGet `CoMaps.CoMaps` 2026.06.13 (CoMaps Community, NSIS x64, dependencia VC++ x64) **no declara `Scope`**; no se inventa. Añadido a `profiles/essential.yaml`. `plan`/`setup` muestran las apps no verificadas en la plataforma como «not yet available (skipped)» y no las cuentan como pendientes. Tests nuevos: app pendiente del setup se omite sin tocar el gestor ni dejar el perfil incompleto; resumen del plan. Tests de perfil/estado calculan los paquetes desde la allowlist. Pruebas (Linux, simulado): gofmt, go vet, go test, validador y tests Python en verde. No ejecutado: Flatpak real, CI Windows.
+  - Aceptación pendiente (Linux real): `sh sovereign.sh setup` muestra CoMaps con aviso comunitario; `setup --yes` lo instala (descarga runtime KDE 6.11); `verify --app comaps`; segunda ejecución sin cambios; abrir CoMaps y descargar una región sin cuenta.
+  - Para habilitar Windows: en un equipo real, `winget show CoMaps.CoMaps` e instalar manualmente observando si aparece UAC y si la ruta es `Program Files` (máquina) o `%LOCALAPPDATA%` (usuario); con ese dato, PR aparte.
 
 - **2026-11-21 · chore/remove-winhance · Retirar WinHance.** Decisión del mantenedor: solo software libre en el catálogo. Eliminado `catalog/apps/winhance.yaml` y el enlace en `privacy audit`; test que impide reintroducirlo; README corregido (seguía citando `profiles/offline.yaml`, eliminado en #13). Pruebas (entorno del agente, Linux, simulado): gofmt, go vet, go test, validador de catálogo y 22 tests Python en verde. No ejecutado: CI Windows (la ejecuta GitHub).
 

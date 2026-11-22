@@ -384,23 +384,41 @@ func run(args []string) int {
 
 // loadCatalog uses the catalog compiled into the binary unless a development
 // checkout is given explicitly with --root.
+// notAvailableHere reports a setup application that Sovereign cannot install on
+// this platform yet (not verified or unsupported). It is skipped, not an error.
+func notAvailableHere(op planner.Operation) bool {
+	return op.Status == "pending_verification" || op.Status == "unsupported"
+}
+
 // printPlan prints plan entries with their notices and next steps.
 func printPlan(plan planner.Plan, title string, verbose bool) {
 	installed := 0
 	pending := 0
 	other := 0
+	unavailable := 0
 	for _, op := range plan.Operations {
 		if op.Status == "installed" {
 			installed++
+		} else if notAvailableHere(op) {
+			unavailable++
 		} else if op.Required && (op.Status == "not_installed" || op.Status == "inspection_required") {
 			pending++
 		} else if op.Required {
 			other++
 		}
 	}
-	fmt.Printf("%s %s (%s): %d installed, %d to review\n", title, plan.Profile, plan.Platform, installed, pending+other)
+	summary := fmt.Sprintf("%s %s (%s): %d installed, %d to review", title, plan.Profile, plan.Platform, installed, pending+other)
+	if unavailable > 0 {
+		summary += fmt.Sprintf(", %d not yet available on this platform", unavailable)
+	}
+	fmt.Println(summary)
 	for _, op := range plan.Operations {
 		if !verbose && op.Status == "installed" {
+			continue
+		}
+		// Nothing for the user to do: say it once, without the internal reason.
+		if !verbose && notAvailableHere(op) {
+			fmt.Printf("  %-16s not yet available on %s (skipped)\n", op.Application, plan.Platform)
 			continue
 		}
 		fmt.Printf("  %-16s %s\n", op.Application, op.Status)
