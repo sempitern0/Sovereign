@@ -27,10 +27,10 @@ type System interface {
  Root() bool
 }
 
-type hostSystem struct{}
-func (hostSystem) LookPath(name string)(string,error){return exec.LookPath(name)}
-func (hostSystem) ReadOSRelease()([]byte,error){return os.ReadFile("/etc/os-release")}
-func (hostSystem) Root()bool{return os.Geteuid()==0}
+type HostSystem struct{}
+func (HostSystem) LookPath(name string)(string,error){return exec.LookPath(name)}
+func (HostSystem) ReadOSRelease()([]byte,error){return os.ReadFile("/etc/os-release")}
+func (HostSystem) Root()bool{return os.Geteuid()==0}
 
 // Prepare installs Flatpak when missing and adds a user-scoped official Flathub
 // remote if necessary. It never makes changes without explicit consent.
@@ -46,6 +46,15 @@ func Prepare(ctx context.Context, sys System, runner install.Runner, interactive
   program,args,err:=installCommand(data,sys)
   if err!=nil{return false,err}
   if !sys.Root()&&!interactive{return false,errors.New("Flatpak requires administrator approval; run setup from an interactive terminal")}
+  // apt-get requires refreshed package indices on fresh Debian/Ubuntu machines.
+  if program=="apt-get" || (program=="sudo" && len(args)>0 && args[0]=="apt-get") {
+   updateProgram:=program
+   updateArgs:=[]string{"update"}
+   if program=="sudo" {updateArgs=[]string{"apt-get","update"}}
+   if err:=runInstall(ctx,runner,interactive,updateProgram,updateArgs...);err!=nil{
+    return false,fmt.Errorf("refresh official package indices: %w",err)
+   }
+  }
   if err:=runInstall(ctx,runner,interactive,program,args...);err!=nil{return false,fmt.Errorf("install Flatpak: %w",err)}
   if _,err:=sys.LookPath("flatpak");err!=nil{return false,errors.New("Flatpak installation finished but the executable is still unavailable")}
  }
